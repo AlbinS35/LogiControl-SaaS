@@ -3,22 +3,16 @@ Django settings for logistics_fleet – LogiTracker SaaS Platform.
 """
 from pathlib import Path
 import os
-import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ──────────────────────────────────────────────────────────
 #  SECURITY
 # ──────────────────────────────────────────────────────────
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-@=e60d%tkx6scp83qrx2z&u88@g5s-v2tg777(@jgq5mrslhst')
-
-# True in development, False on Render
-DEBUG = 'RENDER' not in os.environ
+SECRET_KEY = 'django-insecure-@=e60d%tkx6scp83qrx2z&u88@g5s-v2tg777(@jgq5mrslhst'
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ──────────────────────────────────────────────────────────
 #  INSTALLED APPS
@@ -46,7 +40,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -77,7 +70,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'logistics_fleet.wsgi.application'
 
 # ──────────────────────────────────────────────────────────
-#  DATABASE  (Railway / TiDB via URL)
+#  DATABASE  (MySQL / mysqlclient)
 # ──────────────────────────────────────────────────────────
 DATABASES = {
     'default': {
@@ -93,22 +86,6 @@ DATABASES = {
         },
     }
 }
-
-# Override with Railway/TiDB connection string in production
-db_from_env = dj_database_url.config(conn_max_age=600)
-if db_from_env:
-    DATABASES['default'].update(db_from_env)
-    
-    # TiDB Serverless strictly requires SSL transport
-    if 'OPTIONS' not in DATABASES['default']:
-        DATABASES['default']['OPTIONS'] = {}
-    
-    # On Render (Linux), the standard CA path works for TiDB
-    if 'tidbcloud.com' in DATABASES['default'].get('HOST', ''):
-        DATABASES['default']['OPTIONS']['ssl_mode'] = 'VERIFY_IDENTITY'
-        DATABASES['default']['OPTIONS']['ssl'] = {
-            'ca': '/etc/ssl/certs/ca-certificates.crt'
-        }
 
 # ──────────────────────────────────────────────────────────
 #  AUTH
@@ -174,14 +151,10 @@ USE_I18N = True
 USE_TZ = True
 
 # ──────────────────────────────────────────────────────────
-#  STATIC & MEDIA
+#  STATIC & MEDIA FILES
 # ──────────────────────────────────────────────────────────
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# Enable WhiteNoise compression and caching support
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

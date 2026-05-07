@@ -17,6 +17,7 @@
 
 <!-- KPI Cards Row -->
 <div class="row g-3 mb-4">
+
     <!-- Active Trips -->
     <div class="col-md-3">
         <div class="kpi-card">
@@ -25,55 +26,59 @@
                 <span class="text-success fw-bold small">+12% vs LW</span>
             </div>
             <div class="text-muted small fw-bold mb-1">ACTIVE TRIPS</div>
-            <div class="kpi-value">{{ active_trips_count|default:"142" }}</div>
+            <div class="kpi-value">{{ active_trips_count }}</div>
             <div class="mt-auto">
                 <div class="perf-bar" style="height: 4px;"><div class="perf-fill bg-primary" style="width: 75%;"></div></div>
             </div>
         </div>
     </div>
-    
-    <!-- Idle Drivers -->
+
+    <!-- Active Drivers (renamed from Idle) -->
     <div class="col-md-3">
-        <div class="kpi-card">
+        <div class="kpi-card" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#driversModal">
             <div class="d-flex justify-content-between mb-3">
-                <div class="kpi-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-person-slash"></i></div>
-                <span class="text-danger fw-bold small">Action Required</span>
+                <div class="kpi-icon bg-success bg-opacity-10 text-success"><i class="bi bi-person-check"></i></div>
+                <span class="text-success fw-bold small">
+                    {% if idle_drivers.count > 0 %}{{ idle_drivers.count }} Idle{% else %}All Active{% endif %}
+                </span>
             </div>
-            <div class="text-muted small fw-bold mb-1">IDLE DRIVERS</div>
-            <div class="kpi-value">{{ available_drivers.count|default:"28" }}</div>
+            <div class="text-muted small fw-bold mb-1">ACTIVE DRIVERS</div>
+            <div class="kpi-value">{{ active_drivers.count }}</div>
             <div class="mt-auto d-flex gap-2">
-                <span class="status-badge bg-light text-muted border">12 RESTING</span>
-                <span class="status-badge bg-light text-muted border">16 UNASSIGNED</span>
+                <span class="status-badge bg-success bg-opacity-10 text-success border">{{ active_drivers.count }} ON-TRIP</span>
+                <span class="status-badge bg-light text-muted border">{{ idle_drivers.count }} IDLE</span>
             </div>
         </div>
     </div>
-    
+
     <!-- In Maintenance -->
     <div class="col-md-3">
-        <div class="kpi-card">
+        <div class="kpi-card" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#maintenanceModal">
             <div class="d-flex justify-content-between mb-3">
                 <div class="kpi-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-wrench"></i></div>
-                <span class="text-danger fw-bold small">High Priority</span>
+                <span class="text-{% if maintenance_count > 0 %}danger{% else %}success{% endif %} fw-bold small">
+                    {% if maintenance_count > 0 %}High Priority{% else %}All Clear{% endif %}
+                </span>
             </div>
             <div class="text-muted small fw-bold mb-1">IN MAINTENANCE</div>
-            <div class="kpi-value">09</div>
+            <div class="kpi-value">{{ maintenance_count }}</div>
             <div class="mt-auto">
-                <div class="text-muted small font-italic">{{ expiring_vehicles.count|default:"3" }} Vehicles due for RC renewal</div>
+                <div class="text-muted small">{{ expiring_vehicles.count }} Vehicle(s) with expiring docs</div>
             </div>
         </div>
     </div>
-    
+
     <!-- Bill Approvals -->
     <div class="col-md-3">
-        <div class="kpi-card">
+        <div class="kpi-card" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#billApprovalsModal">
             <div class="d-flex justify-content-between mb-3">
                 <div class="kpi-icon bg-light text-dark border"><i class="bi bi-receipt"></i></div>
-                <a href="#" class="text-primary fw-bold text-decoration-none small">Review All</a>
+                <span class="text-primary fw-bold small" style="cursor:pointer;">Review All</span>
             </div>
             <div class="text-muted small fw-bold mb-1">BILL APPROVALS</div>
-            <div class="kpi-value">₹4.2L</div>
+            <div class="kpi-value">₹{{ total_pending_amount|floatformat:0 }}</div>
             <div class="mt-auto">
-                <div class="text-dark small fw-bold">{{ pending_trips.count|default:"24" }} Pending Vouchers</div>
+                <div class="text-dark small fw-bold">{{ bill_approval_trips.count }} Pending Voucher(s)</div>
             </div>
         </div>
     </div>
@@ -89,43 +94,74 @@
                     <h5 class="fw-bold mb-0">Driver Fleet Status</h5>
                     <div class="text-muted small">Real-time telemetry and duty logs</div>
                 </div>
-                <button class="btn btn-sm btn-link text-decoration-none text-primary fw-bold"><i class="bi bi-filter"></i> Filter Fleet</button>
+                <div class="d-flex gap-2">
+                    <!-- Filter Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-light border dropdown-toggle" type="button" id="fleetFilterBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-filter"></i> Filter Fleet
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fleetFilterBtn">
+                            <li><a class="dropdown-item fleet-filter-item" href="#" data-filter="all">All Trips</a></li>
+                            <li><a class="dropdown-item fleet-filter-item" href="#" data-filter="in_progress">On-Duty</a></li>
+                            <li><a class="dropdown-item fleet-filter-item" href="#" data-filter="approved">Ready</a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            
+
             <table class="table-clean flex-grow-1">
                 <thead>
                     <tr>
-                        <th width="40%">DRIVER DETAILS</th>
-                        <th width="25%">LOCATION</th>
+                        <th width="35%">DRIVER DETAILS</th>
+                        <th width="30%">ROUTE</th>
                         <th width="20%">DUTY STATUS</th>
                         <th width="15%" class="text-end">ACTION</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="fleetTableBody">
                     {% for trip in active_trips_list %}
-                    <tr>
+                    <tr class="fleet-row" data-status="{{ trip.status }}">
                         <td>
                             <div class="d-flex align-items-center">
+                                {% if trip.driver %}
                                 <img src="https://ui-avatars.com/api/?name={{ trip.driver.get_full_name|default:trip.driver.username }}&background=random" class="driver-avatar me-3">
                                 <div>
                                     <div class="fw-bold text-dark fs-6">{{ trip.driver.get_full_name|default:trip.driver.username }}</div>
-                                    <div class="text-muted" style="font-size: 0.65rem;">DL: {{ trip.driver.driving_license|default:"N/A" }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">DL: {{ trip.driver.driving_license|default:"N/A" }} &nbsp;|&nbsp; LC-{{ trip.id }}</div>
                                 </div>
+                                {% else %}
+                                <div class="driver-avatar me-3 bg-light d-flex align-items-center justify-content-center rounded-circle" style="width:36px;height:36px;">
+                                    <i class="bi bi-person text-muted"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-muted fs-6">Unassigned</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">Route LC-{{ trip.id }}</div>
+                                </div>
+                                {% endif %}
                             </div>
                         </td>
-                        <td><span class="small text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> {{ trip.end_location }}</span></td>
-                        <td><span class="status-badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2">ON-DUTY</span></td>
-                        <td class="text-end"><a href="{% url 'route_analytics' %}" class="text-primary"><i class="bi bi-eye"></i></a></td>
+                        <td><span class="small text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> {{ trip.start_location }} → {{ trip.end_location }}</span></td>
+                        <td>
+                            {% if trip.status == 'in_progress' %}
+                            <span class="status-badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2">ON-DUTY</span>
+                            {% elif trip.status == 'approved' %}
+                            <span class="status-badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2">READY</span>
+                            {% else %}
+                            <span class="status-badge bg-light text-muted border rounded-pill px-2">{{ trip.status|upper }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end"><a href="{% url 'route_analytics' %}" class="text-primary" title="View Route"><i class="bi bi-eye"></i></a></td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">No drivers currently on-trip.</td>
+                    <tr id="emptyRow">
+                        <td colspan="4" class="text-center text-muted py-4">No active trips. <a href="{% url 'trip_allocation' %}" class="text-primary">Deploy a vehicle</a>.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
             <div class="text-center mt-3 pt-3 border-top bg-light rounded py-2">
-                <a href="#" class="text-primary text-decoration-none fw-bold" style="font-size: 0.75rem;">VIEW ALL 124 DRIVERS</a>
+                <a href="{% url 'driver_directory' %}" class="text-primary text-decoration-none fw-bold" style="font-size: 0.75rem;">VIEW ALL {{ all_drivers.count }} DRIVERS</a>
             </div>
         </div>
     </div>
@@ -135,7 +171,7 @@
         <!-- Expiring Documents -->
         <div class="table-panel flex-grow-1" style="background-color: #fafbfd;">
             <h6 class="fw-bold text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Expiring Documents</h6>
-            
+
             {% for vehicle in expiring_vehicles|slice:":3" %}
             <div class="expiry-list-item {% if forloop.last %}border-bottom-0 pb-0 mb-3{% endif %}">
                 <div class="days-badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-exclamation-circle"></i></div>
@@ -147,30 +183,26 @@
             {% empty %}
             <div class="text-muted small mb-3">No immediate expiries detected.</div>
             {% endfor %}
-            
+
             <a href="{% url 'fleet_registry' %}" class="btn btn-outline-primary w-100 fw-bold rounded-3" style="font-size: 0.8rem; border-color: #0b4a99; color: #0b4a99;">MANAGE REGISTRY</a>
         </div>
-        
+
         <!-- Financial Hub -->
         <div class="financial-hub shadow-sm position-relative">
-            <!-- Abstract watermark shape -->
             <i class="bi bi-wallet2 position-absolute" style="font-size: 8rem; right: -20px; bottom: -30px; opacity: 0.1;"></i>
-            
             <h6 class="fw-bold text-white mb-4 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Financial Hub</h6>
-            
             <div class="fin-row border-bottom border-white border-opacity-25 pb-2">
-                <span style="font-size: 0.85rem;" class="text-white-50">MTD Fuel Expense</span>
-                <span class="fw-bold fs-6">₹12,42,000</span>
+                <span style="font-size: 0.85rem;" class="text-white-50">Pending Vouchers</span>
+                <span class="fw-bold fs-6">{{ bill_approval_trips.count }} Bills</span>
             </div>
             <div class="fin-row border-bottom border-white border-opacity-25 pb-2">
                 <span style="font-size: 0.85rem;" class="text-white-50">Pending Salaries</span>
                 <span class="fw-bold fs-6">{{ payrolls.count }} Payrolls</span>
             </div>
             <div class="fin-row mb-4">
-                <span style="font-size: 0.85rem;" class="text-white-50">Pending Vouchers</span>
+                <span style="font-size: 0.85rem;" class="text-white-50">Pending Trips</span>
                 <span class="fw-bold fs-6">{{ pending_trips.count }} Trips</span>
             </div>
-            
             <div class="d-flex gap-2 position-relative z-1">
                 <a href="{% url 'revenue_dashboard' %}" class="btn btn-light text-primary fw-bold flex-grow-1 rounded-3" style="font-size: 0.85rem;">REVIEW REVENUE</a>
                 <button class="btn btn-primary bg-opacity-25 border-0 rounded-3"><i class="bi bi-chevron-right text-white"></i></button>
@@ -187,11 +219,11 @@
                 <div class="text-uppercase fw-bold text-muted mb-2" style="font-size: 0.6rem; letter-spacing: 1px;">Network Density</div>
                 <div class="d-flex align-items-center mb-1">
                     <i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.4rem;"></i>
-                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">North Hub: 42 Trucks</span>
+                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Active Trips: {{ active_trips_count }}</span>
                 </div>
                 <div class="d-flex align-items-center">
                     <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.4rem;"></i>
-                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Port Cluster: 88 Trucks</span>
+                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Active Drivers: {{ active_drivers.count }}</span>
                 </div>
             </div>
         </div>
@@ -200,7 +232,6 @@
         <div class="table-panel h-100">
             <h5 class="fw-bold text-dark mb-2">Fleet Performance</h5>
             <p class="text-muted mb-4" style="font-size: 0.8rem;">Aggregate utilization and efficiency metrics across the national fleet.</p>
-            
             <div class="mb-4">
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">Utilization</span>
@@ -208,7 +239,6 @@
                 </div>
                 <div class="perf-bar"><div class="perf-fill bg-primary" style="width: 88%;"></div></div>
             </div>
-            
             <div class="mb-4">
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">On-Time Delivery</span>
@@ -216,7 +246,6 @@
                 </div>
                 <div class="perf-bar"><div class="perf-fill bg-success" style="width: 94.2%;"></div></div>
             </div>
-            
             <div class="mb-0">
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">Fuel Efficiency</span>
@@ -227,4 +256,224 @@
         </div>
     </div>
 </div>
+
+
+<!-- ════════════════════════════════════════
+     MODALS
+════════════════════════════════════════ -->
+
+<!-- Drivers Modal -->
+<div class="modal fade" id="driversModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">All Drivers — {{ company.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Active Drivers -->
+        <h6 class="fw-bold text-success mb-3"><i class="bi bi-circle-fill me-2" style="font-size:0.5rem;vertical-align:middle;"></i>Active / On-Trip ({{ active_drivers.count }})</h6>
+        {% if active_drivers %}
+        <div class="table-responsive mb-4">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light"><tr><th>Driver</th><th>License</th><th>Phone</th><th>Current Trip</th></tr></thead>
+            <tbody>
+              {% for driver in active_drivers %}
+              {% with trip=driver.trips.all|dictsortreversed:"created_at"|first %}
+              <tr>
+                <td><img src="https://ui-avatars.com/api/?name={{ driver.get_full_name|default:driver.username }}&background=random&size=32" class="rounded-circle me-2" width="32" height="32">{{ driver.get_full_name|default:driver.username }}</td>
+                <td><span class="badge bg-light text-dark border">{{ driver.driving_license|default:"—" }}</span></td>
+                <td>{{ driver.phone_number|default:"—" }}</td>
+                <td>{% if trip %}<span class="badge bg-success bg-opacity-10 text-success">LC-{{ trip.id }}: {{ trip.start_location }} → {{ trip.end_location }}</span>{% else %}—{% endif %}</td>
+              </tr>
+              {% endwith %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}<p class="text-muted small">No drivers currently on trip.</p>{% endif %}
+
+        <!-- Idle Drivers -->
+        <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-circle me-2" style="font-size:0.5rem;vertical-align:middle;"></i>Idle / Available ({{ idle_drivers.count }})</h6>
+        {% if idle_drivers %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light"><tr><th>Driver</th><th>License</th><th>Phone</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for driver in idle_drivers %}
+              <tr>
+                <td><img src="https://ui-avatars.com/api/?name={{ driver.get_full_name|default:driver.username }}&background=random&size=32" class="rounded-circle me-2" width="32" height="32">{{ driver.get_full_name|default:driver.username }}</td>
+                <td><span class="badge bg-light text-dark border">{{ driver.driving_license|default:"—" }}</span></td>
+                <td>{{ driver.phone_number|default:"—" }}</td>
+                <td><a href="{% url 'trip_allocation' %}" class="btn btn-sm btn-outline-primary">Assign Trip</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}<p class="text-muted small">All drivers are currently on a trip!</p>{% endif %}
+      </div>
+      <div class="modal-footer border-0">
+        <a href="{% url 'driver_directory' %}" class="btn btn-primary">Manage All Drivers</a>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Maintenance Modal -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Vehicles In Maintenance</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% if maintenance_vehicles %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr><th>Vehicle</th><th>Make / Model</th><th>Year</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {% for v in maintenance_vehicles %}
+              <tr>
+                <td><span class="fw-bold text-dark">{{ v.registration_number }}</span></td>
+                <td>{{ v.make }} {{ v.model }}</td>
+                <td>{{ v.year }}</td>
+                <td><span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">In Maintenance</span></td>
+                <td>
+                  <form method="POST" action="{% url 'vehicle_status_update' v.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="status" value="active">
+                    <button type="submit" class="btn btn-sm btn-outline-success">Mark Active</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-check-circle text-success" style="font-size:3rem;"></i>
+          <p class="mt-3 text-muted">No vehicles currently in maintenance. Fleet is fully operational!</p>
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer border-0">
+        <a href="{% url 'fleet_registry' %}" class="btn btn-primary">Manage Fleet Registry</a>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bill Approvals Modal -->
+<div class="modal fade" id="billApprovalsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold">Bill Approvals — Pending Fuel & Toll Vouchers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {% if bill_approval_trips %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Trip ID</th><th>Driver</th><th>Route</th>
+                <th>Fuel Amount</th><th>Toll Amount</th><th>Total</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for trip in bill_approval_trips %}
+              <tr>
+                <td><span class="fw-bold">LC-{{ trip.id }}</span></td>
+                <td>{{ trip.driver.get_full_name|default:trip.driver.username|default:"—" }}</td>
+                <td class="small text-muted">{{ trip.start_location }} → {{ trip.end_location }}</td>
+                <td>
+                  {% if trip.fuel_amount %}
+                    {% if trip.fuel_approved %}<span class="badge bg-success">₹{{ trip.fuel_amount }} ✓</span>
+                    {% else %}<span class="badge bg-warning text-dark">₹{{ trip.fuel_amount }} Pending</span>{% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td>{% if trip.toll_amount %}₹{{ trip.toll_amount }}{% else %}—{% endif %}</td>
+                <td class="fw-bold">₹{% widthratio trip.fuel_amount|add:trip.toll_amount|default:trip.fuel_amount|default:0 1 1 %}</td>
+                <td>
+                  <div class="d-flex gap-1">
+                    {% if trip.fuel_amount and not trip.fuel_approved %}
+                    <form method="POST">
+                      {% csrf_token %}
+                      <input type="hidden" name="trip_id" value="{{ trip.id }}">
+                      <input type="hidden" name="action" value="approve_fuel">
+                      <button type="submit" class="btn btn-sm btn-success" title="Approve Fuel Bill">
+                        <i class="bi bi-check-lg"></i> Fuel
+                      </button>
+                    </form>
+                    {% endif %}
+                    {% if trip.toll_amount and not trip.toll_approved %}
+                    <form method="POST">
+                      {% csrf_token %}
+                      <input type="hidden" name="trip_id" value="{{ trip.id }}">
+                      <input type="hidden" name="action" value="approve_toll">
+                      <button type="submit" class="btn btn-sm btn-outline-success" title="Approve Toll Bill">
+                        <i class="bi bi-check-lg"></i> Toll
+                      </button>
+                    </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <i class="bi bi-receipt-cutoff text-success" style="font-size:3rem;"></i>
+          <p class="mt-3 text-muted">No pending bill approvals. All expense receipts have been processed!</p>
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer border-0">
+        <a href="{% url 'revenue_dashboard' %}" class="btn btn-primary">View Revenue Dashboard</a>
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Fleet Filter
+    document.querySelectorAll('.fleet-filter-item').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            const filter = this.getAttribute('data-filter');
+            const rows = document.querySelectorAll('.fleet-row');
+            let visibleCount = 0;
+
+            rows.forEach(function (row) {
+                if (filter === 'all' || row.getAttribute('data-status') === filter) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const emptyRow = document.getElementById('emptyRow');
+            if (emptyRow) emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+
+            document.getElementById('fleetFilterBtn').innerHTML = '<i class="bi bi-filter"></i> ' + this.textContent;
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -268,6 +268,21 @@ def manager_dashboard(request):
             messages.success(request, f'Toll bill for Trip #{trip.id} approved.')
         return redirect('manager_dashboard')
 
+    # Active (on-trip) drivers
+    active_driver_ids = Trip.objects.filter(
+        status__in=['in_progress', 'approved'], company=company
+    ).exclude(driver__isnull=True).values_list('driver_id', flat=True)
+
+    # All drivers for this company
+    all_drivers = User.objects.filter(role='driver', company=company)
+    active_drivers = all_drivers.filter(id__in=active_driver_ids)
+    idle_drivers = all_drivers.exclude(id__in=active_driver_ids)
+
+    # Maintenance vehicles
+    maintenance_vehicles = Vehicle.objects.filter(status='maintenance', company=company)
+    maintenance_count = maintenance_vehicles.count()
+
+    # Pending trips (bills / vouchers to approve)
     pending_trips = Trip.objects.filter(status='pending', company=company)
     payrolls = Payroll.objects.filter(company=company).order_by('-month')[:5]
 
@@ -278,36 +293,44 @@ def manager_dashboard(request):
         company=company
     ).distinct()
 
-    busy_drivers = Trip.objects.filter(status='in_progress', company=company).values_list('driver_id', flat=True)
-    available_drivers = User.objects.filter(role='driver', company=company).exclude(id__in=busy_drivers)
     busy_vehicles = Trip.objects.filter(status='in_progress', company=company).values_list('vehicle_id', flat=True)
     available_vehicles = Vehicle.objects.filter(status='active', company=company).exclude(id__in=busy_vehicles)
 
+    # Fleet status table (active + approved trips with driver info)
     active_trips_list = Trip.objects.filter(
-        status='in_progress', company=company
-    ).select_related('driver', 'vehicle')[:5]
+        status__in=['in_progress', 'approved'], company=company
+    ).select_related('driver', 'vehicle').order_by('-created_at')
+
+    # Bill approvals — trips with pending fuel/toll receipts
+    bill_approval_trips = Trip.objects.filter(
+        company=company,
+        fuel_approved=False,
+        fuel_amount__isnull=False,
+    ).exclude(fuel_amount=0).select_related('driver', 'vehicle').order_by('-updated_at')[:10]
+
+    total_pending_amount = sum(
+        (t.fuel_amount or 0) + (t.toll_amount or 0)
+        for t in bill_approval_trips
+    )
 
     unread_alerts = Alert.objects.filter(company=company, status='unread').order_by('-created_at')[:5]
-
-    # Expense approvals
-    pending_fuel_trips = Trip.objects.filter(
-        company=company,
-        fuel_amount__isnull=False,
-        fuel_approved=False
-    ).exclude(fuel_amount=0).select_related('driver', 'vehicle')[:5]
 
     context = {
         'pending_trips': pending_trips,
         'payrolls': payrolls,
         'expiring_vehicles': expiring_vehicles,
-        'available_drivers': available_drivers,
+        'active_drivers': active_drivers,
+        'idle_drivers': idle_drivers,
+        'all_drivers': all_drivers,
         'available_vehicles': available_vehicles,
         'active_trips_list': active_trips_list,
-        'active_trips_count': active_trips_list.count(),
-        'maintenance_count': Vehicle.objects.filter(status='maintenance', company=company).count(),
+        'active_trips_count': Trip.objects.filter(status__in=['in_progress', 'approved'], company=company).count(),
+        'maintenance_vehicles': maintenance_vehicles,
+        'maintenance_count': maintenance_count,
+        'bill_approval_trips': bill_approval_trips,
+        'total_pending_amount': total_pending_amount,
         'today': today,
         'unread_alerts': unread_alerts,
-        'pending_fuel_trips': pending_fuel_trips,
     }
     return render(request, 'fleet/manager_dashboard.html', context)
 
@@ -405,6 +428,22 @@ def driver_trip_update(request, trip_id):
 def vehicle_directory(request):
     vehicles = Vehicle.objects.all()
     return render(request, 'fleet/vehicle_directory.html', {'vehicles': vehicles})
+
+
+@login_required
+@manager_required
+def vehicle_status_update(request, vehicle_id):
+    """Quick status toggle for a vehicle (e.g. maintenance → active)."""
+    if request.method == 'POST':
+        vehicle = get_object_or_404(Vehicle, id=vehicle_id, company=request.user.company)
+        new_status = request.POST.get('status', 'active')
+        if new_status in ['active', 'maintenance', 'inactive']:
+            vehicle.status = new_status
+            vehicle.save()
+            messages.success(request, f"Vehicle {vehicle.registration_number} marked as {new_status}.")
+        else:
+            messages.error(request, "Invalid status.")
+    return redirect('manager_dashboard')
 
 
 @login_required
@@ -625,6 +664,12 @@ def trip_allocation(request):
                 trip.company = company
                 if trip.driver:
                     trip.status = 'approved'
+                else:
+                    trip.status = 'pending'
+                
+                trip.save()  # Must save the trip first to generate an ID
+                
+                if trip.driver:
                     Alert.objects.create(
                         company=company,
                         trip=trip,
@@ -632,9 +677,7 @@ def trip_allocation(request):
                         alert_type='trip_assigned',
                         message=f"New trip assigned: {trip.start_location} → {trip.end_location}.",
                     )
-                else:
-                    trip.status = 'pending'
-                trip.save()
+                
                 messages.success(request, "Trip created successfully.")
                 return redirect('trip_allocation')
             else:
@@ -644,12 +687,28 @@ def trip_allocation(request):
 
     busy_drivers = Trip.objects.filter(status='in_progress', company=company).values_list('driver_id', flat=True)
     available_drivers = User.objects.filter(role='driver', company=company).exclude(id__in=busy_drivers)
-    unassigned_trips = Trip.objects.filter(status='pending', company=company)
+
+    # Unassigned = pending trips that have NO driver assigned yet
+    unassigned_trips = Trip.objects.filter(
+        status='pending', company=company, driver__isnull=True
+    ).select_related('vehicle').order_by('scheduled_departure')
+
+    # Urgent deliveries = trips whose scheduled departure is today or overdue, still pending
+    from django.utils import timezone as tz
+    now = tz.now()
+    urgent_trips = Trip.objects.filter(
+        company=company,
+        status='pending',
+        scheduled_departure__lte=now
+    ).select_related('vehicle', 'driver').order_by('scheduled_departure')
 
     context = {
         'form': form,
         'unassigned_trips': unassigned_trips,
         'available_drivers': available_drivers,
+        'urgent_trips': urgent_trips,
+        'urgent_count': urgent_trips.count(),
+        'now': now,
     }
     return render(request, 'fleet/trip_allocation.html', context)
 

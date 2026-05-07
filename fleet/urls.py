@@ -49,6 +49,7 @@ urlpatterns = [
     path('fleet-registry/', views.fleet_registry, name='fleet_registry'),
     path('directory/vehicles/', views.vehicle_directory, name='vehicle_directory'),
     path('directory/drivers/', views.driver_directory, name='driver_directory'),
+    path('vehicle/<int:vehicle_id>/status/', views.vehicle_status_update, name='vehicle_status_update'),
 
     # ── Manager – Trips ───────────────────────────────────
     path('trip-allocation/', views.trip_allocation, name='trip_allocation'),
