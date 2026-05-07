@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Logistics Fleet Manager{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="bg-light dark-mode-ready">
+    {% if user.is_authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary glass-nav fixed-top shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="{% url 'dashboard' %}">
+                <i class="bi bi-truck me-2"></i>FleetTrack Pro
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'dashboard' %}">Dashboard</a>
+                    </li>
+                    {% if user.is_admin or user.is_manager %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'vehicle_directory' %}">Vehicles</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'driver_directory' %}">Drivers</a>
+                    </li>
+                    {% endif %}
+                </ul>
+                <div class="d-flex align-items-center">
+                    <span class="text-light me-3">Welcome, {{ user.username }} ({{ user.get_role_display }})</span>
+                    <form action="{% url 'logout' %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="main-content" style="margin-top: 80px;">
+    {% else %}
+    <div class="main-content">
+    {% endif %}
+        
+        <div class="container py-4">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

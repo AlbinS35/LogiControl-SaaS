@@ -1,0 +1,162 @@
+{% extends 'fleet/admin_base.html' %}
+
+{% block title %}Support Tickets - LogiControl{% endblock %}
+
+{% block header_button %}
+<a href="#" class="btn-primary-custom"><i class="bi bi-envelope-plus"></i> New Ticket</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem; }
+    .page-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; }
+
+    .stat-card {
+        background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;
+        display: flex; flex-direction: column; justify-content: space-between; height: 100%;
+    }
+    .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .stat-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+    .stat-icon { font-size: 1.5rem; color: #cbd5e1; }
+    .stat-icon.red { color: #fca5a5; }
+    .stat-icon.blue { color: #93c5fd; }
+    .stat-icon.green { color: #86efac; }
+    .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem; line-height: 1;}
+
+    .table-container { background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+    
+    .table-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); }
+    .table-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    
+    .custom-table { width: 100%; border-collapse: collapse; }
+    .custom-table th { 
+        text-align: left; padding: 1rem 1.5rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); background: var(--bg-light);
+    }
+    .custom-table td { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    
+    .ticket-subj { font-weight: 700; font-size: 0.9rem; color: var(--text-main); margin: 0 0 0.2rem 0; }
+    .ticket-id { font-size: 0.75rem; color: var(--text-muted); font-family: monospace;}
+    
+    .tenant-name { font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+    
+    .badge-priority { padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+    .priority-high { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5;}
+    .priority-med { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d;}
+    .priority-low { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;}
+    
+    .badge-status { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .status-open { background: #dbeafe; color: #1d4ed8; }
+    .status-pending { background: #fef3c7; color: #b45309; }
+    .status-resolved { background: #dcfce7; color: #166534; }
+    
+    .action-btn { color: #2563eb; background: #eff6ff; padding: 0.4rem 0.8rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; text-decoration: none; display: inline-block;}
+    .action-btn:hover { background: #dbeafe; color: #1d4ed8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="page-title">Support Tickets</h1>
+    <p class="page-sub">Monitor tenant inquiries, technical issues, and billing disputes.</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Open Tickets</div>
+                <i class="bi bi-envelope-open stat-icon blue"></i>
+            </div>
+            <div class="stat-value">24</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">High Priority</div>
+                <i class="bi bi-exclamation-octagon stat-icon red"></i>
+            </div>
+            <div class="stat-value" style="color: #dc2626;">5</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Avg Response Time</div>
+                <i class="bi bi-clock-history stat-icon"></i>
+            </div>
+            <div class="stat-value">1.2h</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Resolved (7d)</div>
+                <i class="bi bi-check2-all stat-icon green"></i>
+            </div>
+            <div class="stat-value">142</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <h3 class="table-title">Recent Tickets</h3>
+        <form method="GET" action="{% url 'admin_support_tickets' %}" class="d-flex gap-2">
+            <select name="status" style="border: 1px solid var(--border-color); border-radius: 4px; padding: 0.3rem 0.8rem; font-size: 0.8rem; outline: none;" onchange="this.form.submit()">
+                <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+                <option value="open" {% if current_status == 'open' %}selected{% endif %}>Open</option>
+                <option value="progress" {% if 'progress' in current_status %}selected{% endif %}>Pending</option>
+                <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+            </select>
+            <button type="submit" style="border: 1px solid var(--border-color); background: white; border-radius: 4px; padding: 0.3rem 0.8rem;"><i class="bi bi-filter"></i> Filter</button>
+        </form>
+    </div>
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>TICKET</th>
+                <th>TENANT</th>
+                <th>PRIORITY</th>
+                <th>STATUS</th>
+                <th>CREATED</th>
+                <th>ACTION</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>
+                    <p class="ticket-subj">{{ ticket.subject }}</p>
+                    <span class="ticket-id">#{{ ticket.id }}</span>
+                </td>
+                <td><span class="tenant-name">{{ ticket.tenant }}</span></td>
+                <td>
+                    <span class="badge-priority 
+                        {% if ticket.priority_cls == 'high' %}priority-high
+                        {% elif ticket.priority_cls == 'medium' %}priority-med
+                        {% else %}priority-low{% endif %}">
+                        {{ ticket.priority }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge-status 
+                        {% if ticket.status_cls == 'open' %}status-open
+                        {% elif ticket.status_cls == 'in-progress' %}status-pending
+                        {% else %}status-resolved{% endif %}">
+                        {{ ticket.status }}
+                    </span>
+                </td>
+                <td style="font-size: 0.8rem; color: var(--text-muted);">{{ ticket.time }}</td>
+                <td><a href="#" class="action-btn">View</a></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-muted">No support tickets found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

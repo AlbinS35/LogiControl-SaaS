@@ -1,0 +1,237 @@
+{% extends 'fleet/admin_base.html' %}
+
+{% block title %}Tenant Management - LogiControl{% endblock %}
+
+{% block header_button %}
+<button class="btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addTenantModal"><i class="bi bi-plus-lg"></i> Add New Tenant</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem; }
+    .page-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; }
+    
+    .stats-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; display: inline-block; background: white;}
+    .stats-title { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .stats-val { font-size: 2.2rem; font-weight: 800; color: var(--text-main); line-height: 1; display: flex; align-items: flex-end; gap: 0.8rem; }
+    .stats-change { font-size: 0.85rem; font-weight: 700; color: #16a34a; display: flex; align-items: center; gap: 0.2rem;}
+
+    .table-container { background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-top: 2rem; }
+    
+    .custom-table { width: 100%; border-collapse: collapse; }
+    .custom-table th { 
+        text-align: left; padding: 1rem 1.5rem; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); background: var(--bg-light);
+    }
+    .custom-table td { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    
+    .company-cell { display: flex; align-items: center; gap: 1rem; }
+    .company-icon { 
+        width: 40px; height: 40px; background: var(--bg-light); border: 1px solid var(--border-color);
+        border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .company-icon img { max-width: 100%; border-radius: 6px; }
+    .company-name { font-weight: 700; font-size: 0.95rem; color: var(--text-main); margin: 0; }
+    .company-sub { font-size: 0.75rem; color: #dc2626; font-weight: 600; margin-top: 0.2rem;}
+    
+    .badge-plan { padding: 0.25rem 0.8rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+    .badge-enterprise { background: #e0e7ff; color: #4338ca; }
+    .badge-pro { background: #f3f4f6; color: #4b5563; }
+    .badge-basic { background: #fef3c7; color: #b45309; }
+    
+    .status-badge { padding: 0.25rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-risk { background: #fee2e2; color: #b91c1c; }
+    
+    .progress-bar { width: 100px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; display: inline-block; margin-right: 0.5rem;}
+    .progress-fill { height: 100%; background: var(--primary); }
+    .progress-fill.warning { background: #dc2626; }
+    
+    .fleet-size-text { font-size: 0.8rem; font-weight: 600; color: var(--text-main); }
+    
+    .table-footer { padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-muted); font-weight: 500;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+    <div>
+        <h1 class="page-title">Tenant Management</h1>
+        <p class="page-sub">Manage active logistics partners, vehicle quotas, and platform access.</p>
+    </div>
+    
+    <div class="stats-box">
+        <div class="stats-title">TOTAL ACTIVE TENANTS</div>
+        <div class="stats-val">
+            142
+            <div class="stats-change"><i class="bi bi-graph-up-arrow"></i> +12%</div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th style="width: 50px;"><input type="checkbox" id="selectAll"> Select All</th>
+                <th>COMPANY NAME</th>
+                <th>PLAN</th>
+                <th>FLEET SIZE</th>
+                <th>STATUS</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for company in companies %}
+            <tr>
+                <td><input type="checkbox"></td>
+                <td>
+                    <div class="company-cell">
+                        <div class="company-icon">{{ company.name|make_list|first|upper }}</div>
+                        <div>
+                            <p class="company-name">{{ company.name }}</p>
+                            <p class="company-sub" style="color: var(--text-muted); font-weight: 500;">ID: T-{{ company.id|add:"9000" }}</p>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {% if company.subscription_tier == 'enterprise' %}
+                    <span class="badge-plan badge-enterprise">ENTERPRISE</span>
+                    {% elif company.subscription_tier == 'pro' %}
+                    <span class="badge-plan badge-pro">PRO</span>
+                    {% else %}
+                    <span class="badge-plan badge-basic">BASIC</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        {% if company.subscription_tier == 'enterprise' %}
+                        <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
+                        <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / ∞</span>
+                        {% elif company.subscription_tier == 'pro' %}
+                        <div class="progress-bar"><div class="progress-fill" style="width: {% widthratio company.vehicle_count|default:"0" 50 100 %}%;"></div></div>
+                        <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / 50</span>
+                        {% else %}
+                        <div class="progress-bar"><div class="progress-fill {% if company.vehicle_count|default:0 >= 4 %}warning{% endif %}" style="width: {% widthratio company.vehicle_count|default:"0" 5 100 %}%;"></div></div>
+                        <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / 5</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if not company.is_active %}
+                    <span class="status-badge status-risk">Inactive</span>
+                    {% else %}
+                    <span class="status-badge status-active">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="dropdown">
+                        <i class="bi bi-three-dots-vertical" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-muted); cursor: pointer;"></i>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editTenantModal{{ company.id }}"><i class="bi bi-pencil me-2 text-primary"></i> Edit Tenant</a></li>
+                            <li>
+                                <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="suspend">
+                                    <input type="hidden" name="company_id" value="{{ company.id }}">
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-pause-circle me-2 text-warning"></i> {% if company.is_active %}Suspend{% else %}Reactivate{% endif %}</button>
+                                </form>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="company_id" value="{{ company.id }}">
+                                    <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to delete this tenant?');"><i class="bi bi-trash me-2"></i> Delete</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Edit Tenant Modal -->
+                    <div class="modal fade" id="editTenantModal{{ company.id }}" tabindex="-1" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content border-0 shadow">
+                          <div class="modal-header border-0 pb-0">
+                            <h5 class="modal-title fw-bold text-dark">Edit Tenant</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <form method="POST" action="{% url 'admin_tenant_action' %}">
+                              {% csrf_token %}
+                              <input type="hidden" name="action" value="edit">
+                              <input type="hidden" name="company_id" value="{{ company.id }}">
+                              <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Company Name</label>
+                                <input type="text" name="name" class="form-control" value="{{ company.name }}" required>
+                              </div>
+                              <div class="mb-3">
+                                <label class="form-label text-muted small fw-bold text-uppercase">Subscription Plan</label>
+                                <select name="subscription_tier" class="form-select">
+                                  <option value="basic" {% if company.subscription_tier == 'basic' %}selected{% endif %}>Basic (Up to 5 vehicles)</option>
+                                  <option value="pro" {% if company.subscription_tier == 'pro' %}selected{% endif %}>Pro (Up to 50 vehicles)</option>
+                                  <option value="enterprise" {% if company.subscription_tier == 'enterprise' %}selected{% endif %}>Enterprise (Unlimited)</option>
+                                </select>
+                              </div>
+                              <div class="modal-footer border-0 pt-0 px-0">
+                                <button type="button" class="btn btn-light fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary fw-bold" style="background-color: var(--primary); border: none;">Save Changes</button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-muted">No tenants found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="table-footer">
+        Showing 1 to {{ companies.count }} of {{ companies.count }} entries
+    </div>
+</div>
+
+<!-- Add Tenant Modal -->
+<div class="modal fade" id="addTenantModal" tabindex="-1" aria-labelledby="addTenantModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-dark" id="addTenantModalLabel">Add New Tenant</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{% url 'admin_tenant_action' %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add">
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Company Name</label>
+            <input type="text" name="name" class="form-control" placeholder="e.g. Apex Freight Systems" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Subscription Plan</label>
+            <select name="subscription_tier" class="form-select">
+              <option value="basic">Basic (Up to 5 vehicles)</option>
+              <option value="pro">Pro (Up to 50 vehicles)</option>
+              <option value="enterprise">Enterprise (Unlimited)</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Admin Email Address</label>
+            <input type="email" class="form-control" placeholder="admin@company.com">
+          </div>
+          <div class="modal-footer border-0 pt-0 px-0">
+            <button type="button" class="btn btn-light fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary fw-bold" style="background-color: var(--primary); border: none;">Create Tenant</button>
+          </div>
+        </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

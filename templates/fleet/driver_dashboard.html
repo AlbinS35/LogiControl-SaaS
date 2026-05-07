@@ -1,0 +1,436 @@
+{% extends 'driver_base.html' %}
+{% load static %}
+
+{% block driver_content %}
+<style>
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .badge-schedule {
+        background-color: #dcfce7;
+        color: #166534;
+        font-weight: 600;
+        padding: 0.5rem 1.25rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Cards */
+    .dashboard-row-cards {
+        display: grid;
+        grid-template-columns: 1fr 1.8fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .card-check {
+        background: linear-gradient(135deg, #0b4a99 0%, #1e3a8a 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        position: relative;
+    }
+
+    .card-check .icon-box {
+        background: rgba(255,255,255,0.1);
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-start-check {
+        background: white;
+        color: #0b4a99;
+        font-weight: 700;
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.85rem;
+        margin-top: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+    }
+
+    .btn-start-check.completed {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        pointer-events: none;
+    }
+
+    .card-trip-details {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem 2rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .trip-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+
+    .trip-cargo {
+        color: #1e293b;
+        font-weight: 800;
+        font-size: 1.1rem;
+        text-align: right;
+    }
+
+    .trip-route {
+        font-size: 1.25rem;
+        font-weight: 500;
+        color: #1e293b;
+        margin-bottom: 1.5rem;
+    }
+
+    .progress-custom {
+        height: 8px;
+        background-color: #f1f5f9;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background-color: #0b4a99;
+        border-radius: 10px;
+        width: 65%;
+    }
+
+    .stat-box-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .stat-box {
+        background: #f8fafc;
+        padding: 1rem 1.5rem;
+        border-radius: 0.75rem;
+    }
+
+    .stat-box .lbl {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-box .val {
+        font-weight: 800;
+        color: #0b4a99;
+        font-size: 1.1rem;
+    }
+
+    .stat-box .val.eta {
+        color: #ea580c;
+    }
+
+    /* Map Section */
+    .map-container {
+        background-color: #1e293b;
+        border-radius: 1rem;
+        height: 350px;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .map-overlay-dark {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+    }
+
+    .map-path {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+    }
+
+    .map-controls {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        z-index: 10;
+    }
+
+    .map-btn {
+        background: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.6rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        color: #1e293b;
+    }
+
+    .map-btn i { color: #ea580c; }
+
+    .milestone-badge {
+        position: absolute;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+
+    .milestone-icon {
+        background: #eff6ff;
+        color: #0b4a99;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Quick Actions */
+    .quick-actions-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #e2e8f0;
+        text-decoration: none;
+        color: #1e293b;
+        transition: transform 0.2s;
+    }
+
+    .action-card:hover {
+        transform: translateY(-2px);
+        background: #f8fafc;
+    }
+
+    .action-card .content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .action-card .icon-primary {
+        background: #eff6ff;
+        color: #0b4a99;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .action-card .label { font-weight: 700; font-size: 0.95rem; }
+
+    .panic-card {
+        background: #fef2f2;
+        border: 1.5px solid #fee2e2;
+        color: #991b1b;
+    }
+
+    .panic-card .icon-primary {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    /* Toast Container for custom notifications */
+    .toast-container {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 2000;
+    }
+</style>
+
+<!-- Messages/Toasts -->
+<div class="toast-container">
+    {% if messages %}
+        {% for message in messages %}
+        <div class="toast show align-items-center text-white {% if message.tags == 'success' %}bg-success{% elif message.tags == 'error' %}bg-danger{% else %}bg-primary{% endif %} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    {{ message }}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div class="header-row">
+    <div>
+        <h4 class="fw-bold mb-1 text-primary" style="font-size: 0.9rem; letter-spacing: 0.5px;">Active Trip</h4>
+        <div class="text-muted small">Driver: <strong>{{ request.user.get_full_name|default:"Rajesh Kumar" }}</strong> | Truck ID: <strong>{{ active_trip.vehicle.registration_number|default:"MH-12-PQ-9901" }}</strong></div>
+    </div>
+    <div class="badge-schedule">
+        <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> On Schedule
+    </div>
+</div>
+
+{% if active_trip %}
+<div class="dashboard-row-cards">
+    <!-- Pre-Trip Check -->
+    <div class="card-check shadow-sm">
+        <div class="icon-box">
+            <i class="bi bi-clipboard-check"></i>
+        </div>
+        <h5 class="fw-bold mb-2">Pre-Trip Check</h5>
+        <p class="small opacity-75 mb-0">Mandatory digital "Vehicle Health Check" must be completed before every journey.</p>
+        
+        {% if active_trip.pre_trip_check %}
+        <div class="btn-start-check completed">
+            CHECK COMPLETED <i class="bi bi-check-lg"></i>
+        </div>
+        {% else %}
+        <a href="{% url 'driver_action' active_trip.id 'health_check' %}" class="btn-start-check">
+            START HEALTH CHECK <i class="bi bi-chevron-right"></i>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Trip Details -->
+    <div class="card-trip-details shadow-sm">
+        <div class="trip-meta">
+            <div>TRIP ID: LC-IND-2023-{{ active_trip.id|stringformat:"04d" }}</div>
+            <div class="trip-cargo">
+                <span class="text-muted fw-bold me-2" style="font-size: 0.6rem;">CARGO</span><br>
+                Industrial Electronics
+            </div>
+        </div>
+        
+        <div class="trip-route">
+            {{ active_trip.start_location }} <i class="bi bi-arrow-right text-primary mx-2"></i> {{ active_trip.end_location }}
+        </div>
+
+        <div class="progress-custom">
+            <div class="progress-fill"></div>
+        </div>
+
+        <div class="stat-box-row">
+            <div class="stat-box">
+                <div class="lbl">DISTANCE LEFT</div>
+                <div class="val">482 KM</div>
+            </div>
+            <div class="stat-box">
+                <div class="lbl">ETA</div>
+                <div class="val eta">08:45 HRS</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Map View -->
+<div class="map-container shadow-sm">
+    <div class="map-overlay-dark"></div>
+    <div class="map-controls">
+        <button class="map-btn"><i class="bi bi-fuel-pump"></i> Fuel Nearby</button>
+        <button class="map-btn"><i class="bi bi-shop"></i> Food Stops</button>
+        <button class="map-btn"><i class="bi bi-tools"></i> Service Centers</button>
+    </div>
+
+    <!-- Animated SVG Route -->
+    <svg class="map-path" viewBox="0 0 1000 350">
+        <path d="M 100 250 Q 300 100 500 200 T 900 100" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" stroke-dasharray="10, 10" />
+        <circle cx="100" cy="250" r="8" fill="#ef4444" />
+        <circle cx="900" cy="100" r="8" fill="#22c55e" />
+        <!-- Current position indicator -->
+        <circle cx="620" cy="160" r="10" fill="#3b82f6" stroke="white" stroke-width="3">
+            <animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" />
+        </circle>
+    </svg>
+
+    <div class="milestone-badge">
+        <div class="milestone-icon">
+            <i class="bi bi-geo-alt-fill"></i>
+        </div>
+        <div>
+            <div class="fw-bold" style="font-size: 0.85rem;">Next Milestone: Surat Highway</div>
+            <div class="text-muted" style="font-size: 0.7rem;">12 KM • Est. 15 mins</div>
+        </div>
+    </div>
+</div>
+
+<h6 class="fw-bold mb-3" style="font-size: 0.85rem; color: #1e293b;">Quick Actions</h6>
+<div class="quick-actions-row">
+    <a href="{% url 'driver_trip_update' active_trip.id %}" class="action-card shadow-sm">
+        <div class="content">
+            <div class="icon-primary"><i class="bi bi-receipt"></i></div>
+            <span class="label">Upload Fuel Bill</span>
+        </div>
+        <i class="bi bi-camera text-muted fs-5"></i>
+    </a>
+
+    <a href="{% url 'driver_trip_update' active_trip.id %}" class="action-card shadow-sm">
+        <div class="content">
+            <div class="icon-primary"><i class="bi bi-speedometer2"></i></div>
+            <span class="label">Log Odometer</span>
+        </div>
+        <i class="bi bi-pencil text-muted fs-5"></i>
+    </a>
+
+    <a href="{% url 'driver_action' active_trip.id 'panic' %}" class="action-card panic-card shadow-sm" onclick="return confirm('WARNING: Trigger Emergency Panic Button? Dispatch will be alerted immediately.');">
+        <div class="content">
+            <div class="icon-primary"><i class="bi bi-asterisk"></i></div>
+            <span class="label">Panic Button</span>
+        </div>
+        <i class="bi bi-exclamation-triangle fs-5"></i>
+    </a>
+</div>
+{% else %}
+<div class="alert alert-info py-5 text-center shadow-sm rounded-3">
+    <i class="bi bi-info-circle fs-1 d-block mb-3"></i>
+    <h5 class="fw-bold">No Active Trips</h5>
+    <p class="text-muted mb-0">Please wait for the operations team to assign your next route.</p>
+</div>
+{% endif %}
+
+{% endblock %}

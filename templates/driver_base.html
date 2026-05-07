@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Driver Portal - LogiControl{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0b4a99;
+            --sidebar-bg: #f8fafc;
+            --active-item: #eef2ff;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            overflow-x: hidden;
+        }
+
+        .driver-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .driver-sidebar {
+            width: 260px;
+            background-color: white;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 1000;
+        }
+
+        .sidebar-user-info {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-user-info h6 {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-user-info span {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 1.5rem 0;
+            margin: 0;
+        }
+
+        .nav-link-custom {
+            padding: 0.85rem 1.5rem;
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-link-custom i {
+            margin-right: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .nav-link-custom:hover {
+            color: var(--primary-blue);
+            background-color: #f8fafc;
+        }
+
+        .nav-link-custom.active {
+            color: var(--primary-blue);
+            background-color: var(--active-item);
+            border-left-color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        /* Main Area */
+        .driver-main {
+            flex-grow: 1;
+            margin-left: 260px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Nav */
+        .driver-navbar {
+            background-color: white;
+            padding: 0 2rem;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+
+        .brand-logo {
+            font-weight: 800;
+            color: var(--primary-blue);
+            font-size: 1.25rem;
+            text-decoration: none;
+        }
+
+        .nav-tabs-custom {
+            display: flex;
+            height: 100%;
+            gap: 2rem;
+        }
+
+        .nav-tab-item {
+            display: flex;
+            align-items: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 3px solid transparent;
+            padding: 0 0.5rem;
+        }
+
+        .nav-tab-item.active {
+            color: var(--primary-blue);
+            border-bottom-color: var(--primary-blue);
+        }
+
+        /* Content Scroll */
+        .driver-content {
+            padding: 2rem;
+            flex-grow: 1;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<div class="driver-layout">
+    <!-- Sidebar -->
+    <div class="driver-sidebar">
+        <div class="sidebar-user-info">
+            <h6>{{ request.user.get_full_name|default:"Rajesh Kumar" }}</h6>
+            <span>{{ active_trip.vehicle.registration_number|default:"MH-12-PQ-9901" }}</span>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="{% url 'driver_dashboard' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_dashboard' %}active{% endif %}">
+                <i class="bi bi-pencil-square"></i> Status
+            </a>
+            <a href="#" class="nav-link-custom">
+                <i class="bi bi-fuel-pump"></i> Fuel Registry
+            </a>
+            <a href="#" class="nav-link-custom">
+                <i class="bi bi-heart-pulse"></i> Vehicle Health
+            </a>
+            <a href="#" class="nav-link-custom">
+                <i class="bi bi-bezier2"></i> Route Analytics
+            </a>
+            <a href="#" class="nav-link-custom">
+                <i class="bi bi-cash-stack"></i> Revenue
+            </a>
+            <a href="{% url 'fleet_settings' %}" class="nav-link-custom">
+                <i class="bi bi-gear"></i> Settings
+            </a>
+        </nav>
+
+        <div class="mt-auto p-3">
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger w-100 btn-sm fw-bold">SIGN OUT</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="driver-main">
+        <nav class="driver-navbar">
+            <a href="#" class="brand-logo">LogiControl</a>
+            
+            <div class="nav-tabs-custom">
+                <a href="#" class="nav-tab-item active">STATUS</a>
+                <a href="#" class="nav-tab-item">FUEL</a>
+                <a href="#" class="nav-tab-item">HEALTH</a>
+            </div>
+
+            <div class="d-flex align-items-center gap-3">
+                <a href="#" class="text-muted fs-5"><i class="bi bi-bell"></i></a>
+                <a href="{% url 'fleet_settings' %}" class="text-muted fs-5"><i class="bi bi-person-circle"></i></a>
+            </div>
+        </nav>
+
+        <div class="driver-content">
+            {% block driver_content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

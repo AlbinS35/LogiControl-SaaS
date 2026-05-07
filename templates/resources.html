@@ -1,0 +1,210 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogiTracker – Indian Roadway Logistics Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:#1e293b;background:#f8fafc}
+a{text-decoration:none}
+
+/* NAVBAR */
+.navbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:1.15rem;font-weight:800;color:#0f172a;letter-spacing:-.3px}
+.nav-brand span{color:#2563eb}
+.nav-links{display:flex;gap:2.2rem}
+.nav-links a{color:#64748b;font-size:.85rem;font-weight:500;transition:color .2s;padding-bottom:2px}
+.nav-links a:hover{color:#0f172a}
+.nav-links a.active{color:#2563eb;border-bottom:2px solid #2563eb;font-weight:600}
+.btn-signin{background:#2563eb;color:#fff;padding:.45rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+.btn-signin:hover{background:#1d4ed8;color:#fff}
+
+/* HERO BANNER */
+.res-hero{background:#2563eb;margin:1.5rem 2%;border-radius:16px;padding:2.5rem 2.5rem;display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center;overflow:hidden;min-height:220px}
+.res-hero-left .tag{display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:.8px;padding:.3rem .7rem;border-radius:6px;margin-bottom:1rem}
+.res-hero-left h1{font-size:2rem;font-weight:900;color:#fff;line-height:1.2;margin-bottom:.8rem}
+.res-hero-left p{color:rgba(255,255,255,.75);font-size:.87rem;line-height:1.6}
+.res-hero-img{border-radius:12px;overflow:hidden;height:180px}
+.res-hero-img img{width:100%;height:100%;object-fit:cover}
+
+/* ARTICLE GRID */
+.articles{padding:1.5rem 2% 3rem;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+
+/* Featured article row spanning full width */
+.art-featured{grid-column:1/4;display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:1rem}
+
+/* Article cards */
+.art-card{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #e2e8f0;display:flex;flex-direction:column;transition:box-shadow .2s}
+.art-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.art-img{height:160px;overflow:hidden}
+.art-img img{width:100%;height:100%;object-fit:cover}
+.art-body{padding:1.2rem;flex:1;display:flex;flex-direction:column}
+.art-tag{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.5px;padding:.25rem .6rem;border-radius:5px;margin-bottom:.6rem}
+.tag-case{background:#dbeafe;color:#1d4ed8}
+.tag-guide{background:#f0fdf4;color:#16a34a}
+.tag-insight{background:#fff7ed;color:#c2410c}
+.art-meta{font-size:.72rem;color:#94a3b8;margin-bottom:.4rem}
+.art-card h3{font-size:.97rem;font-weight:700;color:#0f172a;margin-bottom:.5rem;line-height:1.35}
+.art-card p{font-size:.8rem;color:#64748b;line-height:1.55;flex:1}
+.art-date{font-size:.72rem;color:#94a3b8;margin-top:.8rem;display:flex;align-items:center;justify-content:space-between}
+.art-date i{color:#94a3b8}
+
+/* Map / analytics card */
+.art-card-dark{background:#0f172a;border-color:#1e293b}
+.art-card-dark h3{color:#fff;font-size:1rem}
+.art-card-dark p{color:#64748b}
+.art-card-dark .art-date{color:#475569}
+.art-card-wide{grid-column:1/3}
+
+/* FOOTER */
+footer{background:#fff;border-top:1px solid #e2e8f0;padding:1.5rem 2%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.footer-brand-sm{font-size:1rem;font-weight:800;color:#0f172a}
+.footer-brand-sm span{color:#2563eb}
+.footer-links{display:flex;gap:1.5rem;flex-wrap:wrap}
+.footer-links a{font-size:.78rem;color:#64748b;font-weight:500}
+.footer-links a:hover{color:#2563eb}
+.footer-right{display:flex;align-items:center;gap:1.2rem}
+.footer-copy{font-size:.75rem;color:#94a3b8}
+.footer-icons{display:flex;gap:.7rem}
+.footer-icons a{color:#94a3b8;font-size:1rem}
+.footer-icons a:hover{color:#2563eb}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="{% url 'home' %}" class="nav-brand">Logi<span>Tracker</span></a>
+  <div class="nav-links">
+    <a href="{% url 'home' %}">Solutions</a>
+    <a href="{% url 'pricing' %}">Pricing</a>
+    <a href="{% url 'resources' %}" class="active">Resources</a>
+  </div>
+  <a href="{% url 'login' %}" class="btn-signin">Sign In</a>
+</nav>
+
+<!-- HERO BANNER -->
+<div class="res-hero">
+  <div class="res-hero-left">
+    <div class="tag">Precision Knowledge</div>
+    <h1>Indian Roadway Logistics Hub</h1>
+    <p>Deep dives into the evolving landscape of Indian shipping, from GST compliance to multimodal integration strategies.</p>
+  </div>
+  <div class="res-hero-img">
+    <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=700&q=80" alt="Logistics Hub">
+  </div>
+</div>
+
+<!-- ARTICLE GRID -->
+<div class="articles">
+
+  <!-- ROW 1: Featured 3-column -->
+  <div class="art-featured">
+
+    <!-- Left: Dark analytics card -->
+    <div class="art-card art-card-dark">
+      <div class="art-body" style="padding:1.5rem">
+        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" alt="" style="border-radius:8px;width:100%;height:120px;object-fit:cover;margin-bottom:1rem;opacity:.7">
+        <h3>India Fleet Analytics Dashboard</h3>
+        <p style="color:#475569;font-size:.78rem;margin-top:.4rem">Live map overlays, corridor heatmaps, and state-wise compliance trackers in a single view.</p>
+      </div>
+    </div>
+
+    <!-- Centre: Main case study -->
+    <div class="art-card">
+      <div class="art-body" style="padding:1.8rem">
+        <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.8rem">
+          <span class="art-tag tag-case">Case Study</span>
+          <span style="font-size:.75rem;color:#94a3b8">12 min read</span>
+        </div>
+        <h3 style="font-size:1.15rem;margin-bottom:.7rem">Reducing Inter-State Lead Times by 40%</h3>
+        <p>Learn how an FMCG giant optimized their North-South corridor fleet using LogiTracker's predictive analytics and bypass routing.</p>
+      </div>
+    </div>
+
+    <!-- Right: Insight -->
+    <div class="art-card">
+      <div class="art-body">
+        <span class="art-tag tag-insight">Insight</span>
+        <h3>The Impact of PM Gati Shakti on Roadways</h3>
+        <p>Analyzing how the National Master Plan is reshaping port-to-warehouse connectivity across the western coast.</p>
+        <div class="art-date">
+          <span>January 15, 2025</span>
+          <i class="bi bi-bookmark"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2 -->
+  <!-- Guide card -->
+  <div class="art-card">
+    <div class="art-body">
+      <span class="art-tag tag-guide">Guide</span>
+      <h3>FastTag API Integration Guide</h3>
+      <p>Technical documentation for automating toll expense reconciliation within your existing ERP environment.</p>
+      <div class="art-date"><span>January 15, 2025</span></div>
+    </div>
+  </div>
+
+  <!-- Hill terrain with image -->
+  <div class="art-card">
+    <div class="art-img">
+      <img src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=80" alt="Hill Terrain">
+    </div>
+    <div class="art-body">
+      <h3 style="font-size:.88rem;margin-bottom:.4rem">Navigating Hill Terrain Logistics</h3>
+      <p>Best practices for safety and fuel efficiency in the Himalayan corridor.</p>
+    </div>
+  </div>
+
+  <!-- Tier 2 cities with image -->
+  <div class="art-card">
+    <div class="art-img">
+      <img src="https://images.unsplash.com/photo-1616432043562-3671ea2e5242?auto=format&fit=crop&w=600&q=80" alt="Fleet">
+    </div>
+    <div class="art-body">
+      <h3 style="font-size:.88rem;margin-bottom:.4rem">Optimizing Last Mile in Tier 2 Cities</h3>
+      <p>Strategies for managing density and infrastructure gaps in growing urban hubs.</p>
+    </div>
+  </div>
+
+  <!-- ROW 3 -->
+  <!-- Driver retention with image -->
+  <div class="art-card">
+    <div class="art-img">
+      <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=600&q=80" alt="Driver">
+    </div>
+    <div class="art-body">
+      <h3 style="font-size:.88rem;margin-bottom:.4rem">Driver Retention in 2025</h3>
+      <p>How technology-first fleet management improves driver satisfaction and safety.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-brand-sm">Logi<span>Tracker</span></div>
+    <div class="footer-copy" style="margin-top:.3rem">© 2025 LogiTracker Systems. Precision in Motion.</div>
+  </div>
+  <div class="footer-links">
+    <a href="#">Terms of Service</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Contact Support</a>
+    <a href="#">API Status</a>
+  </div>
+  <div class="footer-icons">
+    <a href="#"><i class="bi bi-globe"></i></a>
+    <a href="#"><i class="bi bi-diagram-3"></i></a>
+    <a href="#"><i class="bi bi-grid"></i></a>
+  </div>
+</footer>
+
+</body>
+</html>

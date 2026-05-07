@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Enterprise Admin - LogiControl India{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="enterprise-body">
+
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">
+                <h4 class="fw-bold mb-0" style="color: #4361ee; font-style: italic;">LogiControl <span
+                        style="font-style: normal;">India</span></h4>
+                <div
+                    style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; letter-spacing: 1px; margin-top: 5px;">
+                    ENTERPRISE ADMIN</div>
+            </div>
+
+            <div class="sidebar-nav">
+                <a href="{% url 'manager_dashboard' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}"><i
+                        class="bi bi-grid-1x2"></i> Dashboard</a>
+                <a href="{% url 'trip_allocation' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'trip_allocation' %}active{% endif %}"><i
+                        class="bi bi-geo-alt"></i> Trip Allocation</a>
+                <a href="{% url 'fleet_registry' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'fleet_registry' %}active{% endif %}"><i
+                        class="bi bi-truck"></i> Fleet Registry</a>
+                <a href="{% url 'driver_directory' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'driver_directory' %}active{% endif %}"><i
+                        class="bi bi-person-badge"></i> Driver Management</a>
+                <a href="{% url 'route_analytics' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'route_analytics' %}active{% endif %}"><i
+                        class="bi bi-bezier2"></i> Route Analytics</a>
+                <a href="{% url 'revenue_dashboard' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'revenue_dashboard' %}active{% endif %}"><i
+                        class="bi bi-cash-stack"></i> Revenue</a>
+                <a href="{% url 'fleet_settings' %}"
+                    class="nav-item-custom {% if request.resolver_match.url_name == 'fleet_settings' %}active{% endif %}"><i
+                        class="bi bi-gear"></i> Settings</a>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-badge">
+                    {% if request.user.profile_picture %}
+                    <img src="{{ request.user.profile_picture.url }}" class="rounded-circle me-3 object-fit-cover"
+                        width="36" height="36" alt="Avatar">
+                    {% else %}
+                    <img src="https://ui-avatars.com/api/?name={{ request.user.get_full_name|default:request.user.username }}&background=1e293b&color=fff"
+                        class="rounded-circle me-3" width="36" height="36" alt="Avatar">
+                    {% endif %}
+                    <div>
+                        <div class="fw-bold text-dark" style="font-size: 0.85rem;">{{ request.user.get_full_name|default:request.user.username }}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">System Owner</div>
+                    </div>
+                </div>
+                <!-- Logout form integrated -->
+                <form action="{% url 'logout' %}" method="post" class="mt-2 text-center">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-link text-muted text-decoration-none"
+                        style="font-size: 0.75rem;"><i class="bi bi-box-arrow-right"></i> Sign Out</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="main-area">
+            <!-- Top Header -->
+            <header class="top-header">
+                {% block top_header_content %}
+                <div class="search-bar">
+                    <i class="bi bi-search text-muted"></i>
+                    <input type="text" placeholder="SEARCH VEHICLES, DRIVERS, DL...">
+                </div>
+                {% endblock %}
+
+                <div class="d-flex align-items-center gap-4 ms-auto">
+                    <a href="{% if request.resolver_match.url_name == 'trip_allocation' %}#{% else %}{% url 'trip_allocation' %}{% endif %}" 
+                       {% if request.resolver_match.url_name == 'trip_allocation' %}data-bs-toggle="modal" data-bs-target="#addTripModal"{% endif %}
+                       class="btn btn-primary px-4 fw-semibold shadow-sm"
+                       style="background-color: #0b4a99; border: none; border-radius: 6px;">+ Deploy Vehicle</a>
+                    <a href="{% url 'fleet_settings' %}#notif-prefs" class="text-muted fs-5"><i
+                            class="bi bi-bell"></i></a>
+                    <a href="#" class="text-muted fs-5"><i class="bi bi-clock-history"></i></a>
+                    <a href="{% url 'fleet_settings' %}" class="text-muted fs-5">
+                        {% if request.user.profile_picture %}
+                        <img src="{{ request.user.profile_picture.url }}" class="rounded-circle object-fit-cover"
+                            width="24" height="24">
+                        {% else %}
+                        <i class="bi bi-person-circle"></i>
+                        {% endif %}
+                    </a>
+                </div>
+            </header>
+
+            <!-- Scrollable Content -->
+            <div class="content-scroll" style="{% block content_scroll_style %}{% endblock %}">
+                {% block enterprise_content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

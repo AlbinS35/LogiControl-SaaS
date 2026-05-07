@@ -1,0 +1,192 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogiControl – Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+a{text-decoration:none}
+
+.page-wrap{display:flex;flex:1;overflow:hidden}
+
+/* LEFT PANEL */
+.left-panel{width:52%;background:#1338be;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:2.5rem;overflow:hidden}
+.left-bg{position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=900&q=80') center/cover no-repeat;opacity:.15}
+.left-content{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;justify-content:space-between}
+.lc-logo{display:flex;align-items:center;gap:.7rem}
+.lc-icon{width:38px;height:38px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff}
+.lc-name{font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-.2px}
+.lc-sub{font-size:.6rem;font-weight:600;letter-spacing:1.5px;color:rgba(255,255,255,.5);text-transform:uppercase}
+
+.left-mid{flex:1;display:flex;flex-direction:column;justify-content:center;padding:2rem 0}
+.left-mid h1{font-size:2.6rem;font-weight:900;color:#fff;line-height:1.15;margin-bottom:1.2rem}
+.left-mid h1 em{font-style:normal;color:#22c55e}
+.left-mid p{color:rgba(255,255,255,.6);font-size:.93rem;line-height:1.65;max-width:380px;margin-bottom:2rem}
+.stat-boxes{display:flex;gap:.9rem}
+.stat-box{background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:.9rem 1.2rem;display:flex;align-items:center;gap:.8rem;flex:1}
+.stat-box-icon{width:32px;height:32px;background:rgba(255,255,255,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem}
+.stat-box-num{font-size:1rem;font-weight:800;color:#fff;line-height:1}
+.stat-box-label{font-size:.6rem;font-weight:600;letter-spacing:.8px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:.2rem}
+
+.left-foot{display:flex;align-items:center;gap:.8rem}
+.avatars{display:flex}
+.avatar-img{width:28px;height:28px;border-radius:50%;border:2px solid #1338be;margin-right:-8px;background:#64748b;overflow:hidden}
+.avatar-img img{width:100%;height:100%;object-fit:cover}
+.trust-text{font-size:.78rem;color:rgba(255,255,255,.6);margin-left:1rem}
+
+/* RIGHT PANEL */
+.right-panel{flex:1;background:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:2.5rem;overflow-y:auto}
+.login-card{width:100%;max-width:380px}
+.login-card h2{font-size:1.75rem;font-weight:800;color:#0f172a;margin-bottom:.4rem}
+.login-card .sub{font-size:.88rem;color:#64748b;margin-bottom:2rem;line-height:1.5}
+.field-group{margin-bottom:1.2rem}
+.field-label{display:flex;justify-content:space-between;align-items:center;font-size:.7rem;font-weight:700;letter-spacing:.8px;color:#475569;text-transform:uppercase;margin-bottom:.5rem}
+.field-label a{font-size:.75rem;font-weight:600;color:#2563eb;letter-spacing:0;text-transform:none}
+.input-wrap{position:relative}
+.input-wrap i{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.95rem}
+.input-wrap input{width:100%;padding:.75rem .9rem .75rem 2.5rem;border:1.5px solid #e2e8f0;border-radius:10px;font-size:.9rem;font-family:'Inter',sans-serif;color:#0f172a;transition:border-color .2s;outline:none;background:#fafafa}
+.input-wrap input::placeholder{color:#cbd5e1}
+.input-wrap input:focus{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.check-row{display:flex;align-items:center;gap:.5rem;margin:1.2rem 0 1.5rem}
+.check-row input[type=checkbox]{width:16px;height:16px;accent-color:#2563eb;border-radius:4px}
+.check-row label{font-size:.83rem;color:#475569}
+.btn-dashboard{width:100%;background:#1338be;color:#fff;padding:.85rem;border-radius:10px;font-size:.95rem;font-weight:700;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-dashboard:hover{background:#0f2fa0;transform:translateY(-1px);box-shadow:0 8px 20px rgba(19,56,190,.3)}
+
+.register-card{margin-top:1.5rem;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:14px;padding:1.2rem;text-align:center}
+.register-card p{font-size:.82rem;color:#78350f;margin-bottom:.9rem}
+.btn-register{background:#92400e;color:#fff;border:none;padding:.65rem 1.5rem;border-radius:9px;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:.5rem}
+.btn-register:hover{background:#78350f;color:#fff}
+.error-box{background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:.7rem 1rem;font-size:.83rem;color:#dc2626;margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem}
+
+/* FOOTER BAR */
+.page-footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:.8rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;flex-shrink:0}
+.page-footer-left{font-size:.75rem;color:#94a3b8}
+.page-footer-links{display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
+.page-footer-links a{font-size:.72rem;color:#64748b;font-weight:500;display:flex;align-items:center;gap:.3rem}
+.page-footer-links a:hover{color:#2563eb}
+.lang-btn{font-size:.72rem;color:#64748b;font-weight:600;display:flex;align-items:center;gap:.3rem;background:#e2e8f0;padding:.3rem .7rem;border-radius:20px}
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="left-bg"></div>
+    <div class="left-content">
+      <div class="lc-logo">
+        <div class="lc-icon"><i class="bi bi-truck-front-fill"></i></div>
+        <div>
+          <div class="lc-name">LogiControl</div>
+          <div class="lc-sub">Precision in Motion</div>
+        </div>
+      </div>
+      <div class="left-mid">
+        <h1>India's Operating System for <em>Modern Logistics.</em></h1>
+        <p>Connect your fleet, optimize routes in real-time, and scale your revenue with the subcontinent's most advanced mission control platform.</p>
+        <div class="stat-boxes">
+          <div class="stat-box">
+            <div class="stat-box-icon"><i class="bi bi-truck"></i></div>
+            <div>
+              <div class="stat-box-num">450k+</div>
+              <div class="stat-box-label">Deliveries Tracked</div>
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-box-icon"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+            <div>
+              <div class="stat-box-num">Pan-India</div>
+              <div class="stat-box-label">Coverage Network</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="left-foot">
+        <div class="avatars">
+          <div class="avatar-img"><img src="https://i.pravatar.cc/40?u=1" alt=""></div>
+          <div class="avatar-img"><img src="https://i.pravatar.cc/40?u=2" alt=""></div>
+          <div class="avatar-img"><img src="https://i.pravatar.cc/40?u=3" alt=""></div>
+        </div>
+        <span class="trust-text">Trusted by 2,000+ logistics companies across India</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="login-card">
+      <h2>Welcome Back</h2>
+      <p class="sub">Sign in to your dashboard to manage operations.</p>
+
+      {% if form.errors %}
+      <div class="error-box">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        Invalid credentials or role mismatch. Please try again.
+      </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+        <input type="hidden" name="role" id="selectedRole" value="manager">
+
+        <div class="field-group">
+          <div class="field-label">Work Email</div>
+          <div class="input-wrap">
+            <i class="bi bi-envelope"></i>
+            <input type="text" name="username" placeholder="name@company.com" required autocomplete="username">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">
+            Password
+            <a href="{% url 'password_reset' %}">Forgot Password?</a>
+          </div>
+          <div class="input-wrap">
+            <i class="bi bi-lock"></i>
+            <input type="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+        </div>
+
+        <div class="check-row">
+          <input type="checkbox" id="keepLogged">
+          <label for="keepLogged">Keep me logged in</label>
+        </div>
+
+        <button type="submit" class="btn-dashboard">
+          Enter Dashboard <i class="bi bi-arrow-right"></i>
+        </button>
+      </form>
+
+
+      <div class="register-card">
+        <p>Own a transport business?</p>
+        <a href="{% url 'owner_signup' %}" class="btn-register">
+          <i class="bi bi-grid-3x3-gap-fill"></i> Register your Fleet
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER BAR -->
+<div class="page-footer">
+  <span class="page-footer-left">© 2024 LogiControl Technologies Pvt Ltd.</span>
+  <div class="page-footer-links">
+    <a href="#"><i class="bi bi-shield-check"></i> Help Center</a>
+    <a href="#"><i class="bi bi-shield-check"></i> Privacy Policy</a>
+    <a href="#"><i class="bi bi-arrow-up-right"></i> Terms of Service</a>
+    <a href="#"><i class="bi bi-envelope"></i> Contact Support</a>
+    <span class="lang-btn"><i class="bi bi-globe"></i> ENGLISH (IN)</span>
+  </div>
+</div>
+
+</body>
+</html>

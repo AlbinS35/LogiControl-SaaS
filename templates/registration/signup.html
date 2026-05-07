@@ -1,0 +1,214 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogiControl – Owner Registration</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;min-height:100vh;display:flex;overflow:hidden}
+a{text-decoration:none}
+
+/* LEFT PANEL */
+.left-panel{width:42%;background:#1338be;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:2.5rem;overflow:hidden;flex-shrink:0}
+.left-bg{position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1531072901881-d644216d4bf9?auto=format&fit=crop&w=800&q=80') center/cover no-repeat;opacity:.2}
+.left-content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:space-between}
+.lc-logo{display:flex;align-items:center;gap:.6rem}
+.lc-icon{color:#fff;font-size:1.2rem}
+.lc-name{font-size:.85rem;font-weight:900;color:#fff;letter-spacing:2px;text-transform:uppercase}
+.left-mid{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:2.5rem}
+.left-mid h2{font-size:2.4rem;font-weight:900;color:#fff;line-height:1.15;margin-bottom:.9rem}
+.left-mid p{color:rgba(255,255,255,.65);font-size:.88rem;line-height:1.65;margin-bottom:2rem}
+.left-divider{height:1px;background:rgba(255,255,255,.15);margin-bottom:1.8rem}
+.left-stats{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.left-stat .num{font-size:1.6rem;font-weight:900;color:#fff}
+.left-stat .label{font-size:.65rem;font-weight:700;letter-spacing:1px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-top:.2rem}
+
+/* RIGHT PANEL */
+.right-panel{flex:1;background:#fff;overflow-y:auto;padding:2.5rem 3rem;display:flex;flex-direction:column;justify-content:center}
+.right-inner{max-width:500px;width:100%}
+
+.phone-input-wrap { display: flex; }
+.phone-input-wrap .country-code { background: #f1f5f9; border: 1.5px solid #e2e8f0; border-right: none; border-radius: 9px 0 0 9px; padding: .72rem 1rem; font-size: .88rem; color: #374151; display: flex; align-items: center; gap: .5rem; }
+.phone-input-wrap input { border-radius: 0 9px 9px 0; flex: 1; }
+
+.right-inner h1{font-size:1.9rem;font-weight:800;color:#0f172a;margin-bottom:.4rem}
+.right-inner .sub{font-size:.87rem;color:#64748b;margin-bottom:2rem;line-height:1.5}
+
+/* FORM */
+.field-label{font-size:.82rem;font-weight:600;color:#374151;margin-bottom:.45rem;display:block}
+input[type=text],input[type=email],input[type=tel],input[type=password],select{width:100%;padding:.72rem 1rem;border:1.5px solid #e2e8f0;border-radius:9px;font-size:.88rem;font-family:'Inter',sans-serif;color:#0f172a;outline:none;background:#fff;transition:border-color .2s;-webkit-appearance:none}
+input::placeholder{color:#cbd5e1}
+input:focus,select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .9rem center;cursor:pointer}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.form-field{margin-bottom:1rem}
+.section-heading{display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0 1rem;border-top:1.5px solid #f1f5f9;padding-top:1.2rem}
+.section-heading h3{font-size:.95rem;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:.5rem}
+.section-heading h3 i{color:#2563eb}
+.next-step-badge{font-size:.6rem;font-weight:700;letter-spacing:1px;background:#f0f4ff;color:#2563eb;padding:.25rem .6rem;border-radius:4px}
+.gstin-input{position:relative}
+.gstin-input .verify-icon{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);color:#22c55e}
+
+.btn-continue{width:100%;background:#1338be;color:#fff;padding:.85rem;border-radius:10px;font-size:.95rem;font-weight:700;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1.5rem}
+.btn-continue:hover{background:#0f2fa0;transform:translateY(-1px);box-shadow:0 8px 20px rgba(19,56,190,.25)}
+
+.trust-badges{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin-top:1rem}
+.trust-badge{font-size:.72rem;font-weight:600;color:#64748b;display:flex;align-items:center;gap:.35rem}
+.trust-badge i{color:#22c55e}
+
+.login-cta{margin-top:1.5rem;padding-top:1.2rem;border-top:1.5px solid #f1f5f9;text-align:center}
+.login-cta p{font-size:.83rem;color:#64748b;margin-bottom:.8rem}
+.btn-login-outline{display:inline-flex;align-items:center;gap:.5rem;border:1.5px solid #2563eb;color:#2563eb;padding:.65rem 1.5rem;border-radius:9px;font-size:.85rem;font-weight:600;transition:all .2s}
+.btn-login-outline:hover{background:#eff6ff;color:#1d4ed8}
+
+/* Chat bubble */
+.chat-bubble{position:fixed;bottom:2rem;right:2rem;width:56px;height:72px;background:#fff;border-radius:30px;border:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:center;color:#2563eb;font-size:1.2rem;box-shadow:0 4px 16px rgba(0,0,0,.05);cursor:pointer;transition:transform .2s}
+.chat-bubble:hover{transform:scale(1.05)}
+
+.error-text{font-size:.75rem;color:#dc2626;margin-top:.3rem;display:flex;align-items:center;gap:.3rem}
+</style>
+</head>
+<body>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="left-bg"></div>
+  <div class="left-content">
+    <div class="lc-logo">
+      <i class="bi bi-truck-front-fill lc-icon"></i>
+      <div class="lc-name">LogiControl India</div>
+    </div>
+    <div class="left-mid">
+      <h2>Precision in Every Mile.</h2>
+      <p>Empowering Indian fleet owners with real-time analytics, automated GST compliance, and seamless route optimization.</p>
+      <div class="left-divider"></div>
+      <div class="left-stats">
+        <div class="left-stat">
+          <div class="num">500+</div>
+          <div class="label">Fleets Registered</div>
+        </div>
+        <div class="left-stat">
+          <div class="num">1.2M+</div>
+          <div class="label">Daily Deliveries</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+  <div class="right-inner">
+
+    <h1>Company Registration</h1>
+    <p class="sub">Register your fleet to get started with LogiControl's enterprise tools.</p>
+
+    {% if form.non_field_errors %}
+    <div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:9px;padding:.7rem 1rem;font-size:.83rem;color:#dc2626;margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <!-- Full Name -->
+      <div class="form-field">
+        <label class="field-label">Full Name</label>
+        {{ form.full_name }}
+        {% if form.full_name.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.full_name.errors.0 }}</div>{% endif %}
+      </div>
+
+      <!-- Business Email -->
+      <div class="form-field">
+        <label class="field-label">Business Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.email.errors.0 }}</div>{% endif %}
+      </div>
+
+      <!-- Phone Number -->
+      <div class="form-field">
+        <label class="field-label">Phone Number</label>
+        <div class="phone-input-wrap">
+          <span class="country-code">🇮🇳 +91</span>
+          {{ form.phone_number }}
+        </div>
+        {% if form.phone_number.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.phone_number.errors.0 }}</div>{% endif %}
+      </div>
+
+      <!-- Company Name -->
+      <div class="form-field">
+        <label class="field-label">Company Name</label>
+        {{ form.company_name }}
+        {% if form.company_name.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.company_name.errors.0 }}</div>{% endif %}
+      </div>
+
+      <div class="form-row">
+        <div>
+          <label class="field-label">GSTIN Number <i class="bi bi-patch-check-fill" style="color:#22c55e;font-size:.8rem"></i></label>
+          <div class="gstin-input">
+            {{ form.gstin }}
+            {% if form.gstin.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.gstin.errors.0 }}</div>{% endif %}
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Fleet Size</label>
+          {{ form.fleet_size }}
+          {% if form.fleet_size.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.fleet_size.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Passwords -->
+      <div class="form-row">
+        <div>
+          <label class="field-label">New Password</label>
+          {{ form.password }}
+          {% if form.password.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.password.errors.0 }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="field-label">Repeat Password</label>
+          {{ form.repeat_password }}
+          {% if form.repeat_password.errors %}<div class="error-text"><i class="bi bi-exclamation-circle"></i>{{ form.repeat_password.errors.0 }}</div>{% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn-continue">
+        Register Company <i class="bi bi-arrow-right"></i>
+      </button>
+
+      <div class="trust-badges">
+        <span class="trust-badge"><i class="bi bi-shield-check"></i> SSL SECURE</span>
+        <span class="trust-badge"><i class="bi bi-receipt"></i> GST COMPLIANT</span>
+      </div>
+
+      <div class="login-cta">
+        <p>Already have an account?</p>
+        <a href="{% url 'login' %}" class="btn-login-outline">
+          <i class="bi bi-box-arrow-in-right"></i> Login to Control Center
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- FLOATING CHAT BUBBLE -->
+<div class="chat-bubble" title="Support">
+  <i class="bi bi-headset"></i>
+</div>
+
+<script>
+  // Phone number validation: allow only numbers and max 10 digits
+  const phoneInput = document.querySelector('input[name="phone_number"]');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function(e) {
+      this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+{% extends 'fleet/admin_base.html' %}
+
+{% block title %}Dashboard - LogiControl{% endblock %}
+
+
+
+
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;
+        display: flex; flex-direction: column; justify-content: space-between; height: 100%;
+    }
+    .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .stat-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+    .stat-icon { font-size: 1.5rem; color: #cbd5e1; }
+    .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem; line-height: 1;}
+    .stat-bottom { font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
+    .stat-bottom.positive { color: #16a34a; }
+
+    .panel { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; height: 100%; }
+    .panel-dark { background: #111827; border: none; border-radius: 8px; padding: 1.5rem; height: 100%; color: white;}
+    
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .panel-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    .panel-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; }
+    
+    .btn-outline-custom { 
+        border: 1px solid var(--border-color); background: var(--bg-light); color: var(--text-main);
+        font-size: 0.75rem; font-weight: 700; padding: 0.4rem 1rem; border-radius: 6px; text-decoration: none;
+    }
+
+    .custom-table { width: 100%; border-collapse: collapse; }
+    .custom-table th { 
+        text-align: left; padding: 0.8rem 0; font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+        text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color);
+    }
+    .custom-table td { padding: 1rem 0; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    
+    .company-cell { display: flex; align-items: center; gap: 1rem; }
+    .company-icon { 
+        width: 36px; height: 36px; background: var(--primary-light); color: var(--primary); 
+        border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
+    }
+    .company-name { font-weight: 700; font-size: 0.9rem; color: var(--text-main); margin: 0; }
+    .company-sub { font-size: 0.7rem; color: var(--text-muted); }
+    
+    .badge-plan { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; }
+    .badge-enterprise { background: #e0e7ff; color: #4338ca; }
+    .badge-pro { background: #f3f4f6; color: #4b5563; }
+    .badge-basic { background: #fef3c7; color: #b45309; }
+    
+    .status-indicator { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 12px; }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-risk { background: #fef3c7; color: #b45309; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-dot.green { background: #16a34a; }
+    .status-dot.orange { background: #d97706; }
+
+    /* Dark Panel elements */
+    .dark-panel-title { font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem;}
+    
+    .health-metric { margin-bottom: 1.5rem; }
+    .health-metric-top { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.5rem; color: #cbd5e1; }
+    .health-value { font-weight: 700; color: #60a5fa; }
+    .health-bar { height: 4px; background: #334155; border-radius: 2px; }
+    .health-fill { height: 100%; border-radius: 2px; }
+    
+    .stream-status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3rem; }
+
+    /* Bar Chart placeholder */
+    .chart-area { height: 220px; display: flex; align-items: flex-end; gap: 8%; margin-top: 2rem; padding: 0 1rem; border-bottom: 2px solid var(--border-color); }
+    .bar { 
+        flex: 1; 
+        background: linear-gradient(180deg, #93c5fd 0%, #eff6ff 100%); 
+        border-radius: 6px 6px 0 0; 
+        position: relative; 
+        transition: height 1s ease-in-out, transform 0.2s, filter 0.2s;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .bar:hover { transform: translateY(-5px); filter: brightness(1.1); cursor: pointer; }
+    .bar.active { background: linear-gradient(180deg, var(--primary) 0%, #3b82f6 100%); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
+    .bar::after {
+        content: attr(data-value); position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+        font-size: 0.75rem; font-weight: 700; color: var(--text-main); opacity: 0; transition: opacity 0.2s;
+        background: white; padding: 0.2rem 0.5rem; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .bar:hover::after { opacity: 1; }
+    .bar-label { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;}
+    
+    /* Regional Distribution */
+    .region-row { margin-bottom: 1.2rem; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: background 0.2s; }
+    .region-row:hover { background: var(--primary-light); }
+    .region-top { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .region-val { color: var(--text-muted); font-weight: 600;}
+    .region-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .region-fill { height: 100%; background: linear-gradient(90deg, var(--primary) 0%, #60a5fa 100%); border-radius: 3px; transition: width 1s ease-out; }
+    
+    .map-placeholder { 
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
+        height: 140px; border-radius: 8px; margin-top: 1.5rem; position: relative; 
+        display: flex; align-items: center; justify-content: center;
+        border: 1px dashed #cbd5e1;
+        overflow: hidden;
+    }
+    .map-badge { background: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; color: var(--primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 2; display: flex; align-items: center; gap: 0.5rem;}
+    .map-pulse { width: 12px; height: 12px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- KPI ROW -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Total Tenants</div>
+                <i class="bi bi-building stat-icon" style="color: #bfdbfe;"></i>
+            </div>
+            <div class="stat-value">{{ total_companies|default:"1,248" }}</div>
+            <div class="stat-bottom positive"><i class="bi bi-graph-up-arrow"></i> +12% from last month</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Active Fleet</div>
+                <i class="bi bi-truck stat-icon" style="color: #fecaca;"></i>
+            </div>
+            <div class="stat-value">{{ total_vehicles|default:"1,120" }}</div>
+            <div class="stat-bottom positive" style="color: #16a34a;"><i class="bi bi-lightning-charge-fill"></i> Live across platform</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Global Revenue</div>
+                <i class="bi bi-cash-stack stat-icon" style="color: #bfdbfe;"></i>
+            </div>
+            <div class="stat-value">$2.4M</div>
+            <div class="stat-bottom positive"><i class="bi bi-graph-up-arrow"></i> MRR +8.4%</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">System Uptime</div>
+                <i class="bi bi-cloud-check stat-icon" style="color: #bbf7d0;"></i>
+            </div>
+            <div class="stat-value">99.99%</div>
+            <div class="stat-bottom positive"><i class="bi bi-check-circle"></i> No incidents reported</div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 2 -->
+<div class="row g-4 mb-4">
+    <div class="col-md-8">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <h3 class="panel-title">Tenant Registry</h3>
+                    <p class="panel-subtitle">Real-time management of logistics partners</p>
+                </div>
+                <a href="{% url 'admin_tenant_management' %}" class="btn-outline-custom">View All Partners</a>
+            </div>
+            
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>COMPANY</th>
+                        <th>SUBSCRIPTION</th>
+                        <th>ACTIVE USERS</th>
+                        <th>STATUS</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for company in companies|slice:":5" %}
+                    <tr>
+                        <td>
+                            <div class="company-cell">
+                                <div class="company-icon" style="{% if forloop.counter|divisibleby:2 %}background:#ffedd5; color:#c2410c;{% elif forloop.counter|divisibleby:3 %}background:#dcfce7; color:#15803d;{% endif %}">{{ company.name|make_list|first|upper }}</div>
+                                <div>
+                                    <p class="company-name">{{ company.name }}</p>
+                                    <p class="company-sub">ID: T-{{ company.id|add:"9000" }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if company.subscription_tier == 'enterprise' %}
+                            <span class="badge-plan badge-enterprise">ENTERPRISE</span>
+                            {% elif company.subscription_tier == 'pro' %}
+                            <span class="badge-plan badge-pro">PRO</span>
+                            {% else %}
+                            <span class="badge-plan badge-basic">BASIC</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 600;">{{ company.user_count|default:"0" }}</td>
+                        <td>
+                            {% if company.subscription_tier == 'basic' and company.vehicle_count >= 5 %}
+                            <span class="status-indicator status-risk"><span class="status-dot orange"></span> At Risk</span>
+                            {% else %}
+                            <span class="status-indicator status-active"><span class="status-dot green"></span> Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="dropdown">
+                                <i class="bi bi-three-dots-vertical" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-muted); cursor: pointer;"></i>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editTenantModal{{ company.id }}"><i class="bi bi-pencil me-2 text-primary"></i> Edit Tenant</a></li>
+                                    <li>
+                                        <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="suspend">
+                                            <input type="hidden" name="company_id" value="{{ company.id }}">
+                                            <button type="submit" class="dropdown-item"><i class="bi bi-pause-circle me-2 text-warning"></i> {% if company.is_active %}Suspend{% else %}Reactivate{% endif %}</button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="company_id" value="{{ company.id }}">
+                                            <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to delete this tenant?');"><i class="bi bi-trash me-2"></i> Delete</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Edit Tenant Modal -->
+                            <div class="modal fade" id="editTenantModal{{ company.id }}" tabindex="-1" aria-hidden="true">
+                              <div class="modal-dialog">
+                                <div class="modal-content border-0 shadow">
+                                  <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">Edit Tenant</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                      {% csrf_token %}
+                                      <input type="hidden" name="action" value="edit">
+                                      <input type="hidden" name="company_id" value="{{ company.id }}">
+                                      <div class="mb-3">
+                                        <label class="form-label text-muted small fw-bold text-uppercase">Company Name</label>
+                                        <input type="text" name="name" class="form-control" value="{{ company.name }}" required>
+                                      </div>
+                                      <div class="mb-3">
+                                        <label class="form-label text-muted small fw-bold text-uppercase">Subscription Plan</label>
+                                        <select name="subscription_tier" class="form-select">
+                                          <option value="basic" {% if company.subscription_tier == 'basic' %}selected{% endif %}>Basic (Up to 5 vehicles)</option>
+                                          <option value="pro" {% if company.subscription_tier == 'pro' %}selected{% endif %}>Pro (Up to 50 vehicles)</option>
+                                          <option value="enterprise" {% if company.subscription_tier == 'enterprise' %}selected{% endif %}>Enterprise (Unlimited)</option>
+                                        </select>
+                                      </div>
+                                      <div class="modal-footer border-0 pt-0 px-0">
+                                        <button type="button" class="btn btn-light fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary fw-bold" style="background-color: var(--primary); border: none;">Save Changes</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No tenants registered yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="panel-dark">
+            <div class="dark-panel-title">
+                <i class="bi bi-activity"></i> SYSTEM HEALTH
+            </div>
+            
+            <div class="health-metric">
+                <div class="health-metric-top">
+                    <span>API Response Time</span>
+                    <span class="health-value">124ms</span>
+                </div>
+                <div class="health-bar"><div class="health-fill" style="width: 15%; background: #3b82f6;"></div></div>
+            </div>
+            
+            <div class="health-metric">
+                <div class="health-metric-top">
+                    <span>Database Load</span>
+                    <span class="health-value" style="color: #22c55e;">28%</span>
+                </div>
+                <div class="health-bar"><div class="health-fill" style="width: 28%; background: #22c55e;"></div></div>
+            </div>
+            
+            <div class="health-metric">
+                <div class="health-metric-top">
+                    <span>Worker Node CPU</span>
+                    <span class="health-value" style="color: #f59e0b;">64%</span>
+                </div>
+                <div class="health-bar"><div class="health-fill" style="width: 64%; background: #f59e0b;"></div></div>
+            </div>
+            
+            <div class="stream-status">
+                <span class="status-dot green"></span> REAL-TIME STREAM ACTIVE
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROW 3 -->
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between;">
+                <h6 style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--text-main);">SUBSCRIPTION ANALYTICS (MRR GROWTH)</h6>
+                <div style="display:flex; gap:0.5rem;">
+                    <div style="width:10px; height:10px; border-radius:50%; background:var(--primary);"></div>
+                    <div style="width:10px; height:10px; border-radius:50%; background:#fb923c;"></div>
+                </div>
+            </div>
+            
+            <div class="chart-area">
+                <div class="bar" style="height: 30%;" data-value="$1.2M"><div class="bar-label">JAN</div></div>
+                <div class="bar" style="height: 45%;" data-value="$1.4M"><div class="bar-label">FEB</div></div>
+                <div class="bar" style="height: 40%;" data-value="$1.35M"><div class="bar-label">MAR</div></div>
+                <div class="bar" style="height: 55%;" data-value="$1.6M"><div class="bar-label">APR</div></div>
+                <div class="bar" style="height: 65%;" data-value="$1.9M"><div class="bar-label">MAY</div></div>
+                <div class="bar" style="height: 70%;" data-value="$2.1M"><div class="bar-label">JUN</div></div>
+                <div class="bar active" style="height: 100%;" data-value="$2.4M"><div class="bar-label">JUL</div></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="panel">
+            <h6 style="font-size: 1rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-main);">Regional Distribution</h6>
+            
+            <div class="region-row">
+                <div class="region-top">
+                    <span><i class="bi bi-geo-alt-fill text-primary me-2"></i> North India</span>
+                    <span class="region-val">{{ companies.count|default:0|add:42 }} Hubs</span>
+                </div>
+                <div class="region-bar"><div class="region-fill" style="width: 80%;"></div></div>
+            </div>
+            <div class="region-row">
+                <div class="region-top">
+                    <span><i class="bi bi-geo-alt-fill text-success me-2"></i> South India</span>
+                    <span class="region-val">{{ companies.count|default:0|add:38 }} Hubs</span>
+                </div>
+                <div class="region-bar"><div class="region-fill" style="width: 70%; background: linear-gradient(90deg, #16a34a 0%, #4ade80 100%);"></div></div>
+            </div>
+            <div class="region-row">
+                <div class="region-top">
+                    <span><i class="bi bi-geo-alt-fill text-warning me-2"></i> West & Central</span>
+                    <span class="region-val">{{ companies.count|default:0|add:21 }} Hubs</span>
+                </div>
+                <div class="region-bar"><div class="region-fill" style="width: 40%; background: linear-gradient(90deg, #d97706 0%, #fbbf24 100%);"></div></div>
+            </div>
+            
+            <div class="map-placeholder">
+                <div style="position:absolute; width:100%; height:100%; background:url('data:image/svg+xml;utf8,<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"2\" cy=\"2\" r=\"1\" fill=\"%23cbd5e1\"/></svg>') repeat; opacity: 0.5;"></div>
+                <div class="map-badge"><div class="map-pulse"></div> Geo-Routing Active</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,273 @@
+{% extends 'enterprise_base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Driver Management - LogiControl India{% endblock %}
+
+{% block top_header_content %}
+<div class="d-flex align-items-center">
+    <div class="me-4 pe-4 border-end">
+        <a href="{% url 'trip_allocation' %}" class="text-muted text-decoration-none fw-bold small me-3">FLEET</a>
+        <a href="{% url 'driver_directory' %}" class="text-primary text-decoration-none fw-bold small border-bottom border-primary border-2 pb-2 text-uppercase">DRIVERS</a>
+        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">ALERTS</a>
+    </div>
+    <div class="search-bar" style="background: #f1f5f9; border: none; width: 300px;">
+        <i class="bi bi-search text-muted"></i>
+        <input type="text" placeholder="Search resources..." style="background: transparent;">
+    </div>
+</div>
+{% endblock %}
+
+{% block enterprise_content %}
+<!-- Display messages -->
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Driver Performance Hub</h2>
+        <p class="text-muted mb-0">Manage and monitor your workforce in real-time.</p>
+    </div>
+    <div>
+        <a href="#onboardDriverSection" class="btn btn-primary fw-bold px-4 rounded-1 shadow-sm" style="background-color: #0b4a99;"><i class="bi bi-person-plus me-2"></i> Add Driver</a>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100 overflow-hidden position-relative">
+            <div class="position-absolute" style="right: -20px; top: -20px; width: 100px; height: 100px; background-color: #f1f5f9; border-radius: 50%;"></div>
+            <div class="card-body p-4 position-relative z-1">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">Total Workforce</span>
+                </div>
+                <h1 class="fw-bold text-dark mb-2 display-6">{{ total_drivers }}</h1>
+                <div class="text-success small fw-bold"><i class="bi bi-graph-up me-1"></i> +12% from last month</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100 overflow-hidden position-relative">
+            <div class="position-absolute" style="right: -20px; top: -20px; width: 100px; height: 100px; background-color: #f0fdf4; border-radius: 50%;"></div>
+            <div class="card-body p-4 position-relative z-1">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-success bg-opacity-10 text-success rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">Active On-Trip</span>
+                </div>
+                <h1 class="fw-bold text-dark mb-2 display-6">{{ active_on_trip }}</h1>
+                <div class="text-success small fw-bold"><i class="bi bi-check-circle me-1"></i> 67% Utilization</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-3 h-100 overflow-hidden position-relative">
+            <div class="position-absolute" style="right: -20px; top: -20px; width: 100px; height: 100px; background-color: #fff7ed; border-radius: 50%;"></div>
+            <div class="card-body p-4 position-relative z-1">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-warning bg-opacity-10 text-warning rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                    <span class="text-muted fw-bold small">Scheduled Leave</span>
+                </div>
+                <h1 class="fw-bold text-dark mb-2 display-6">{{ scheduled_leave }}</h1>
+                <div class="text-danger small fw-bold"><i class="bi bi-exclamation-triangle me-1"></i> High demand for backups</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Driver Directory Table -->
+<div class="card border-0 shadow-sm rounded-3 mb-5">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold mb-0">Active Driver Directory</h5>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm px-3 fw-bold"><i class="bi bi-filter me-1"></i> Filter</button>
+            <button class="btn btn-outline-secondary btn-sm px-3 fw-bold"><i class="bi bi-download me-1"></i> Export</button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+                <thead class="text-muted" style="font-size: 0.8rem; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; background-color: #fafbfc;">
+                    <tr>
+                        <th class="ps-4 fw-bold py-3">Name & ID</th>
+                        <th class="fw-bold py-3">Age</th>
+                        <th class="fw-bold py-3">DL Number</th>
+                        <th class="fw-bold py-3">Status</th>
+                        <th class="text-end pe-4 fw-bold py-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for driver in drivers %}
+                    <tr>
+                        <td class="ps-4 py-3">
+                            <div class="d-flex align-items-center">
+                                <img src="https://ui-avatars.com/api/?name={{ driver.first_name }}&background=random" class="rounded-circle me-3 border" width="40" height="40">
+                                <div>
+                                    <div class="fw-bold text-dark">{{ driver.first_name }} {{ driver.last_name }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem; letter-spacing: 0.5px;">ID: LC-DRV-0{{ driver.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-muted">{{ driver.computed_age }}</td>
+                        <td class="text-muted" style="font-family: monospace; letter-spacing: 1px;">{{ driver.driving_license|default:"N/A" }}</td>
+                        <td>
+                            {% if driver.computed_status == 'On-Trip' %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-1 fw-bold"><i class="bi bi-circle-fill me-1" style="font-size: 0.4rem; vertical-align: middle;"></i> On-Trip</span>
+                            {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1 fw-bold"><i class="bi bi-circle-fill me-1" style="font-size: 0.4rem; vertical-align: middle;"></i> Active</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <button class="btn btn-sm text-muted p-1 me-1" data-bs-toggle="modal" data-bs-target="#editDriverModal{{ driver.id }}"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm text-muted p-1" data-bs-toggle="modal" data-bs-target="#deleteDriverModal{{ driver.id }}"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    
+                    <!-- Edit Driver Modal -->
+                    <div class="modal fade" id="editDriverModal{{ driver.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content text-start">
+                                <form method="post" action="{% url 'driver_directory' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="edit_driver">
+                                    <input type="hidden" name="driver_id" value="{{ driver.id }}">
+                                    <div class="modal-header bg-light">
+                                        <h5 class="modal-title fw-bold">Edit {{ driver.first_name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6"><label class="form-label small fw-bold">First Name</label><input type="text" class="form-control" name="first_name" value="{{ driver.first_name }}" required></div>
+                                            <div class="col-md-6"><label class="form-label small fw-bold">Last Name</label><input type="text" class="form-control" name="last_name" value="{{ driver.last_name }}" required></div>
+                                            <div class="col-md-6"><label class="form-label small fw-bold">Date of Birth</label><input type="date" class="form-control" name="date_of_birth" value="{{ driver.date_of_birth|date:'Y-m-d' }}"></div>
+                                            <div class="col-md-6"><label class="form-label small fw-bold">Phone Number</label><input type="text" class="form-control" name="phone_number" value="{{ driver.phone_number }}"></div>
+                                            <div class="col-md-6"><label class="form-label small fw-bold">License Number</label><input type="text" class="form-control" name="driving_license" value="{{ driver.driving_license }}"></div>
+                                            <div class="col-md-6"><label class="form-label small fw-bold">Experience (Years)</label><input type="number" class="form-control" name="experience_years" value="{{ driver.experience_years }}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delete Driver Modal -->
+                    <div class="modal fade" id="deleteDriverModal{{ driver.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content text-start">
+                                <form method="post" action="{% url 'driver_directory' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_driver">
+                                    <input type="hidden" name="driver_id" value="{{ driver.id }}">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title fw-bold">Confirm Deletion</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to remove <strong>{{ driver.first_name }} {{ driver.last_name }}</strong>? This action cannot be undone.
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-person-slash fs-1 mb-2 d-block"></i>
+                            No drivers found.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-white border-top border-light p-3 d-flex justify-content-between align-items-center">
+        <span class="text-muted" style="font-size: 0.8rem;">Showing {{ total_drivers }} of {{ total_drivers }} drivers</span>
+        <div class="btn-group shadow-sm">
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></button>
+            <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- Onboard New Driver Form -->
+<div id="onboardDriverSection" class="card border-0 shadow-lg rounded-4 overflow-hidden mx-auto" style="max-width: 800px; margin-bottom: 80px;">
+    <div class="card-header py-4 px-5 border-0" style="background-color: #0b4a99; color: white;">
+        <h4 class="fw-bold mb-1">Onboard New Driver</h4>
+        <p class="mb-0 text-white-50" style="font-size: 0.9rem;">Register new personnel to the LogiControl Fleet Registry</p>
+    </div>
+    <div class="card-body p-5">
+        <form method="post" action="{% url 'driver_directory' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_driver">
+            
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">First Name</label>
+                    <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="first_name" placeholder="e.g. Vikram" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Last Name</label>
+                    <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="last_name" placeholder="e.g. Batra" required>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Date of Birth</label>
+                    <input type="date" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="date_of_birth" required>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Driving License Number</label>
+                    <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="driving_license" placeholder="DL-00-0000000000" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Years of Experience</label>
+                    <input type="number" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="experience_years" placeholder="Years" required>
+                </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Phone Number</label>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white border-light text-muted" style="font-size: 0.9rem;">+91</span>
+                        <input type="text" class="form-control border-light border-start-0" style="font-size: 0.9rem;" name="phone_number" placeholder="9876543210" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Email Address</label>
+                    <input type="email" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="email" placeholder="driver@example.com" required>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-3 mt-5">
+                <button type="submit" class="btn btn-primary btn-lg flex-grow-1 fw-bold shadow-sm" style="background-color: #0b4a99;">Confirm Registration</button>
+                <button type="reset" class="btn btn-light btn-lg px-5 border shadow-sm text-muted fw-bold">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends 'enterprise_base.html' %}
+
+{% block title %}Settings - LogiControl India{% endblock %}
+
+{% block top_header_content %}
+<div class="d-flex align-items-center">
+    <div class="me-4 pe-4 border-end">
+        <a href="{% url 'fleet_registry' %}" class="text-muted text-decoration-none fw-bold small me-3 text-uppercase">FLEET</a>
+        <a href="{% url 'driver_directory' %}" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">DRIVERS</a>
+        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">ALERTS</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block enterprise_content %}
+<!-- Display messages -->
+{% if messages %}
+<div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Settings</h2>
+    <p class="text-muted mb-0">Manage your organization's global preferences and security.</p>
+</div>
+
+<form method="post" action="{% url 'fleet_settings' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row g-4">
+        
+        <!-- Left Nav (Mock UI for visual matching) -->
+        <div class="col-lg-3">
+            <div class="list-group rounded-3 shadow-sm border-0 gap-1">
+                <a href="#" class="list-group-item list-group-item-action active bg-primary text-white border-0 py-3 fw-bold rounded-top-3 d-flex justify-content-between align-items-center" style="background-color: #0b4a99 !important;">
+                    <span><i class="bi bi-person me-2"></i> Profile</span>
+                    <i class="bi bi-chevron-right small"></i>
+                </a>
+                {% if request.user.is_manager or request.user.is_admin %}
+                <a href="#org-details" class="list-group-item list-group-item-action border-0 py-3 fw-bold text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-building me-2"></i> Organization</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="#notif-prefs" class="list-group-item list-group-item-action border-0 py-3 fw-bold text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-bell me-2"></i> Notifications</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                <a href="#comp-thresh" class="list-group-item list-group-item-action border-0 py-3 fw-bold text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-shield-check me-2"></i> Compliance</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+                {% endif %}
+                <a href="#sys-prefs" class="list-group-item list-group-item-action border-0 py-3 fw-bold text-dark d-flex justify-content-between align-items-center rounded-bottom-3">
+                    <span><i class="bi bi-gear me-2"></i> System</span>
+                    <i class="bi bi-chevron-right small text-muted"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Form Area -->
+        <div class="col-lg-9 d-flex flex-column gap-4 pb-5">
+            
+            <!-- User Profile -->
+            <div class="card border-0 shadow-sm rounded-3" style="background-color: #f8fafc;">
+                <div class="card-body p-4 p-md-5">
+                    <h5 class="fw-bold mb-4">User Profile</h5>
+                    
+                    <div class="d-flex align-items-center mb-4 pb-4 border-bottom border-light">
+                        <div class="position-relative me-4">
+                            {% if request.user.profile_picture %}
+                                <img src="{{ request.user.profile_picture.url }}" class="rounded-circle border border-3 border-white shadow-sm object-fit-cover" width="80" height="80">
+                            {% else %}
+                                <img src="https://ui-avatars.com/api/?name={{ request.user.first_name }}&background=1e293b&color=fff" class="rounded-circle border border-3 border-white shadow-sm" width="80" height="80">
+                            {% endif %}
+                            <button type="button" onclick="document.getElementById('profilePicInput').click()" class="btn btn-primary btn-sm rounded-circle position-absolute bottom-0 end-0 shadow" style="background-color: #0b4a99; border: 2px solid white; width: 28px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-camera" style="font-size: 0.7rem;"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold text-dark mb-1">{{ request.user.get_full_name|default:request.user.username }}</h5>
+                            <div class="text-muted small mb-2">India Region • Fleet Owner since {{ company.created_at|date:"Y" }}</div>
+                            <input type="file" name="profile_picture" id="profilePicInput" style="display: none;" accept="image/*">
+                            <button type="button" onclick="document.getElementById('profilePicInput').click()" class="btn btn-outline-primary btn-sm fw-bold px-3 py-1 bg-white" style="font-size: 0.75rem; border-color: #0b4a99; color: #0b4a99;">CHANGE PROFILE PICTURE</button>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">First Name</label>
+                            <input type="text" class="form-control" name="first_name" value="{{ request.user.first_name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Last Name</label>
+                            <input type="text" class="form-control" name="last_name" value="{{ request.user.last_name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Email Address</label>
+                            <input type="email" class="form-control" name="email" value="{{ request.user.email }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Phone Number</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white text-muted">+91</span>
+                                <input type="text" class="form-control border-start-0" name="phone_number" value="{{ request.user.phone_number }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6 offset-md-6 d-flex align-items-center">
+                            <a href="#" class="text-primary text-decoration-none fw-bold small mt-2"><i class="bi bi-lock me-1"></i> Change Account Password</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if request.user.is_manager or request.user.is_admin %}
+            <!-- Organization Details -->
+            <div id="org-details" class="card border-0 shadow-sm rounded-3" style="background-color: #f8fafc;">
+                <div class="card-body p-4 p-md-5">
+                    <h5 class="fw-bold mb-4">Organization Details</h5>
+                    
+                    <div class="row g-4">
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">Company Name</label>
+                            <input type="text" class="form-control" name="company_name" value="{{ company.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">GSTIN Number</label>
+                            <input type="text" class="form-control" name="gstin" value="{{ company.gstin|default:'' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Default Currency</label>
+                            <select class="form-select" name="default_currency">
+                                <option value="INR" {% if company.default_currency == 'INR' %}selected{% endif %}>INR - Indian Rupee (₹)</option>
+                                <option value="USD" {% if company.default_currency == 'USD' %}selected{% endif %}>USD - US Dollar ($)</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted">Registered Address</label>
+                            <textarea class="form-control" name="registered_address" rows="3">{{ company.registered_address|default:'' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notification Preferences -->
+            <div id="notif-prefs" class="card border-0 shadow-sm rounded-3" style="background-color: #f8fafc;">
+                <div class="card-body p-4 p-md-5">
+                    <h5 class="fw-bold mb-4">Notification Preferences</h5>
+                    
+                    <div class="list-group list-group-flush bg-transparent gap-3">
+                        <div class="list-group-item bg-white border rounded-3 p-3 d-flex justify-content-between align-items-center shadow-sm">
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">Expiring Documents</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">SMS & Email alerts for permits, insurance, and fitness expiry</div>
+                            </div>
+                            <div class="form-check form-switch fs-4 mb-0">
+                                <input class="form-check-input border-primary" type="checkbox" role="switch" name="alert_expiring_docs" {% if company.alert_expiring_docs %}checked{% endif %} style="cursor: pointer;">
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-white border rounded-3 p-3 d-flex justify-content-between align-items-center shadow-sm">
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">Maintenance Reminders</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Scheduled vehicle service and breakdown recovery alerts</div>
+                            </div>
+                            <div class="form-check form-switch fs-4 mb-0">
+                                <input class="form-check-input border-primary" type="checkbox" role="switch" name="alert_maintenance" {% if company.alert_maintenance %}checked{% endif %} style="cursor: pointer;">
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-white border rounded-3 p-3 d-flex justify-content-between align-items-center shadow-sm">
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">New Trip Assignments</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Alerts when drivers are assigned to a new route</div>
+                            </div>
+                            <div class="form-check form-switch fs-4 mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" name="alert_trip_assignment" {% if company.alert_trip_assignment %}checked{% endif %} style="cursor: pointer;">
+                            </div>
+                        </div>
+                        
+                        <div class="list-group-item bg-white border rounded-3 p-3 d-flex justify-content-between align-items-center shadow-sm">
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">Fuel Bill Approvals</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Instant notification for fuel reimbursement requests</div>
+                            </div>
+                            <div class="form-check form-switch fs-4 mb-0">
+                                <input class="form-check-input border-primary" type="checkbox" role="switch" name="alert_fuel_approvals" {% if company.alert_fuel_approvals %}checked{% endif %} style="cursor: pointer;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance Thresholds -->
+            <div id="comp-thresh" class="card border-0 shadow-sm rounded-3" style="background-color: #f8fafc;">
+                <div class="card-body p-4 p-md-5">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="fw-bold mb-0">Compliance Thresholds</h5>
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1" style="font-size: 0.6rem; letter-spacing: 1px;">ACTIVE SYSTEM</span>
+                    </div>
+                    
+                    <div class="bg-white border rounded-3 p-4 d-flex justify-content-between align-items-center shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                                <i class="bi bi-stopwatch"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size: 0.9rem;">Document Expiry Alert Lead Time</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Send first notification before expiry</div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="number" class="form-control text-center text-primary fw-bold border-primary border-opacity-25 bg-white" name="doc_expiry_lead_time" value="{{ company.doc_expiry_lead_time }}" style="width: 70px;">
+                            <span class="fw-bold text-dark small">Days</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- System Preferences -->
+            <div id="sys-prefs" class="card border-0 shadow-sm rounded-3" style="background-color: #f8fafc;">
+                <div class="card-body p-4 p-md-5">
+                    <h5 class="fw-bold mb-4">System Preferences</h5>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Appearance Mode</label>
+                            <div class="d-flex gap-3">
+                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if request.user.appearance_mode == 'light' %}border-primary{% endif %}" style="cursor: pointer;">
+                                    <input type="radio" name="appearance_mode" value="light" class="d-none" {% if request.user.appearance_mode == 'light' %}checked{% endif %}>
+                                    <i class="bi bi-sun fs-4 mb-1 d-block {% if request.user.appearance_mode == 'light' %}text-primary{% else %}text-muted{% endif %}"></i>
+                                    <div class="fw-bold {% if request.user.appearance_mode == 'light' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Light Mode</div>
+                                </label>
+                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if request.user.appearance_mode == 'dark' %}border-primary{% else %}opacity-50{% endif %}" style="cursor: pointer;">
+                                    <input type="radio" name="appearance_mode" value="dark" class="d-none" {% if request.user.appearance_mode == 'dark' %}checked{% endif %}>
+                                    <i class="bi bi-moon fs-4 mb-1 d-block {% if request.user.appearance_mode == 'dark' %}text-primary{% else %}text-muted{% endif %}"></i>
+                                    <div class="fw-bold {% if request.user.appearance_mode == 'dark' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Dark Mode</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Platform Language</label>
+                            <select class="form-select bg-white" name="platform_language">
+                                <option value="English (India)" {% if request.user.platform_language == 'English (India)' %}selected{% endif %}>English (India)</option>
+                                <option value="Hindi" {% if request.user.platform_language == 'Hindi' %}selected{% endif %}>Hindi</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-3 mt-2">
+                <button type="reset" class="btn btn-link text-muted fw-bold text-decoration-none">Cancel Changes</button>
+                <button type="submit" class="btn btn-primary fw-bold px-4 rounded-3 shadow-sm" style="background-color: #0b4a99; border: none;">Save All Settings</button>
+            </div>
+            
+        </div>
+    </div>
+</form>
+
+{% endblock %}

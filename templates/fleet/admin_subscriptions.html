@@ -1,0 +1,327 @@
+{% extends 'fleet/admin_base.html' %}
+
+{% block title %}Subscriptions - LogiControl{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem; }
+    .page-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; }
+
+    .stat-card {
+        background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;
+        display: flex; flex-direction: column; justify-content: space-between; height: 100%; position: relative; overflow: hidden;
+    }
+    .stat-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .stat-title { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
+    .stat-icon { font-size: 1.2rem; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; }
+    .stat-icon.blue { background: #e0e7ff; color: #4338ca; }
+    .stat-icon.green { background: #dcfce7; color: #15803d; }
+    .stat-icon.red { background: #fee2e2; color: #b91c1c; }
+    
+    .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--text-main); margin-bottom: 1rem; line-height: 1;}
+    .stat-bottom { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.3rem;}
+    .stat-bottom.positive { color: #16a34a; }
+    .stat-bottom.warning { color: #ea580c; }
+    
+    .panel { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; height: 100%; }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .panel-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;}
+    
+    .custom-table { width: 100%; border-collapse: collapse; }
+    .custom-table th { 
+        text-align: left; padding: 1rem 0; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .custom-table td { padding: 1.2rem 0; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+    
+    .org-name { font-weight: 700; font-size: 0.9rem; color: var(--text-main); margin: 0; }
+    .org-id { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.1rem;}
+    
+    .badge-plan { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.65rem; font-weight: 700; }
+    .badge-enterprise { background: #e0e7ff; color: #4338ca; }
+    .badge-pro { background: #ffedd5; color: #c2410c; }
+    .badge-basic { background: #e2e8f0; color: #475569; }
+    
+    .status-badge { padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-pastdue { background: #fee2e2; color: #b91c1c; }
+
+    .plan-block { padding: 1rem; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 1rem; }
+    .plan-block.highlight { border-color: #93c5fd; background: #eff6ff; position: relative;}
+    .plan-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;}
+    .plan-name { font-weight: 700; font-size: 0.85rem; color: var(--text-main); }
+    .plan-price { font-weight: 800; font-size: 0.95rem; color: var(--text-main); }
+    .plan-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;}
+    
+    .highlight-badge { position: absolute; top: -10px; right: 10px; background: #2563eb; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    
+    .feature-toggle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+    .feature-info { width: 75%; }
+    .feature-title { font-weight: 700; font-size: 0.8rem; color: var(--text-main); margin-bottom: 0.1rem;}
+    .feature-desc { font-size: 0.7rem; color: var(--text-muted); line-height: 1.3;}
+    
+    .toggle-switch { width: 36px; height: 20px; border-radius: 10px; background: #cbd5e1; position: relative; cursor: pointer; }
+    .toggle-switch.active { background: #2563eb; }
+    .toggle-knob { width: 16px; height: 16px; border-radius: 50%; background: white; position: absolute; top: 2px; left: 2px; transition: 0.2s;}
+    .toggle-switch.active .toggle-knob { left: 18px; }
+    
+    .btn-outline-blue { border: 1px solid #2563eb; color: #2563eb; background: transparent; font-weight: 600; font-size: 0.85rem; width: 100%; padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="page-title">Subscriptions Management</h1>
+    <p class="page-sub">Monitor global recurring revenue, active plans, and tenant health metrics.</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Total MRR</div>
+                <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+            </div>
+            <div class="stat-value">{{ total_mrr|default:"$0" }}</div>
+            <div class="stat-bottom positive"><i class="bi bi-graph-up-arrow"></i> +12.4% vs last month</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Active Subscriptions</div>
+                <div class="stat-icon green"><i class="bi bi-check2-circle"></i></div>
+            </div>
+            <div class="stat-value">{{ active_subs|default:"0" }}</div>
+            <div class="stat-bottom positive"><i class="bi bi-graph-up-arrow"></i> +5 new this month</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-top">
+                <div class="stat-title">Churn Rate</div>
+                <div class="stat-icon red"><i class="bi bi-graph-down-arrow"></i></div>
+            </div>
+            <div class="stat-value">{{ churn_rate|default:"1.8%" }}</div>
+            <div class="stat-bottom warning"><i class="bi bi-exclamation-triangle"></i> Slight increase detected</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-8">
+        <div class="panel">
+            <div class="panel-header">
+                <h3 class="panel-title">Tenant Registry</h3>
+                <div class="d-flex gap-2">
+                    <form method="GET" action="{% url 'admin_subscriptions' %}" style="position: relative;">
+                        <i class="bi bi-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #94a3b8;"></i>
+                        <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search tenants..." style="padding: 0.4rem 1rem 0.4rem 2rem; border: 1px solid var(--border-color); border-radius: 4px; font-size: 0.8rem; outline: none;">
+                    </form>
+                    <button style="border: 1px solid var(--border-color); background: white; border-radius: 4px; padding: 0.4rem 0.8rem;"><i class="bi bi-filter"></i></button>
+                </div>
+            </div>
+            
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Organization</th>
+                        <th>Plan</th>
+                        <th>Status</th>
+                        <th>Renewal Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for company in companies %}
+                    <tr>
+                        <td>
+                            <p class="org-name">{{ company.name }}</p>
+                            <p class="org-id">ID: T-{{ company.id|add:"9000" }}</p>
+                        </td>
+                        <td>
+                            {% if company.subscription_tier == 'enterprise' %}
+                            <span class="badge-plan badge-enterprise">Enterprise</span>
+                            {% elif company.subscription_tier == 'pro' %}
+                            <span class="badge-plan badge-pro">Pro</span>
+                            {% else %}
+                            <span class="badge-plan badge-basic">Basic</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if not company.is_active %}
+                            <span class="status-badge status-pastdue">Inactive</span>
+                            {% else %}
+                            <span class="status-badge status-active">Active</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--text-main);">{{ company.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <i class="bi bi-three-dots-vertical" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-muted); cursor: pointer;"></i>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                                    <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editTenantModal{{ company.id }}"><i class="bi bi-pencil me-2 text-primary"></i> Edit Tenant</a></li>
+                                    <li>
+                                        <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="suspend">
+                                            <input type="hidden" name="company_id" value="{{ company.id }}">
+                                            <button type="submit" class="dropdown-item"><i class="bi bi-pause-circle me-2 text-warning"></i> {% if company.is_active %}Suspend{% else %}Reactivate{% endif %}</button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete">
+                                            <input type="hidden" name="company_id" value="{{ company.id }}">
+                                            <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to delete this tenant?');"><i class="bi bi-trash me-2"></i> Delete</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <!-- Edit Tenant Modal -->
+                            <div class="modal fade" id="editTenantModal{{ company.id }}" tabindex="-1" aria-hidden="true">
+                              <div class="modal-dialog">
+                                <div class="modal-content border-0 shadow">
+                                  <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title fw-bold text-dark">Edit Tenant</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form method="POST" action="{% url 'admin_tenant_action' %}">
+                                      {% csrf_token %}
+                                      <input type="hidden" name="action" value="edit">
+                                      <input type="hidden" name="company_id" value="{{ company.id }}">
+                                      <div class="mb-3">
+                                        <label class="form-label text-muted small fw-bold text-uppercase">Company Name</label>
+                                        <input type="text" name="name" class="form-control" value="{{ company.name }}" required>
+                                      </div>
+                                      <div class="mb-3">
+                                        <label class="form-label text-muted small fw-bold text-uppercase">Subscription Plan</label>
+                                        <select name="subscription_tier" class="form-select">
+                                          <option value="basic" {% if company.subscription_tier == 'basic' %}selected{% endif %}>Basic (Up to 5 vehicles)</option>
+                                          <option value="pro" {% if company.subscription_tier == 'pro' %}selected{% endif %}>Pro (Up to 50 vehicles)</option>
+                                          <option value="enterprise" {% if company.subscription_tier == 'enterprise' %}selected{% endif %}>Enterprise (Unlimited)</option>
+                                        </select>
+                                      </div>
+                                      <div class="modal-footer border-0 pt-0 px-0">
+                                        <button type="button" class="btn btn-light fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary fw-bold" style="background-color: var(--primary); border: none;">Save Changes</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No subscriptions found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                Showing 1 to {{ active_subs }} of {{ active_subs }} entries
+                <div style="display: flex; gap: 1rem;">
+                    <i class="bi bi-chevron-left" style="cursor: pointer;"></i>
+                    <i class="bi bi-chevron-right text-primary" style="cursor: pointer;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="panel mb-4">
+            <h3 class="panel-title mb-4">Plan Configuration <i class="bi bi-pencil" style="color: #2563eb; font-size: 0.9rem; margin-left: auto; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#pricingModal"></i></h3>
+            
+            <div class="plan-block">
+                <div class="plan-top">
+                    <span class="plan-name">Basic Tier</span>
+                    <span class="plan-price">₹4,000/mo</span>
+                </div>
+                <div class="plan-desc">Up to 5 vehicles, standard support.</div>
+            </div>
+            
+            <div class="plan-block highlight">
+                <span class="highlight-badge">₹16,500/mo</span>
+                <div class="plan-top">
+                    <span class="plan-name" style="color: #2563eb;">Pro Tier</span>
+                    <span class="plan-price" style="color: #2563eb;">₹16,500/mo</span>
+                </div>
+                <div class="plan-desc" style="color: #3b82f6;">Up to 50 vehicles, priority support, API access.</div>
+            </div>
+            
+            <div class="plan-block">
+                <div class="plan-top">
+                    <span class="plan-name">Enterprise Tier</span>
+                    <span class="plan-price">Custom</span>
+                </div>
+                <div class="plan-desc">Unlimited vehicles, dedicated success manager.</div>
+            </div>
+            
+            <button class="btn-outline-blue" data-bs-toggle="modal" data-bs-target="#pricingModal">Adjust Pricing Models</button>
+        </div>
+        
+        <div class="panel">
+            <h3 class="panel-title mb-4">Global Features</h3>
+            
+            <div class="feature-toggle">
+                <div class="feature-info">
+                    <div class="feature-title">Beta Analytics Engine</div>
+                    <div class="feature-desc">Enable new predictive routing ML models.</div>
+                </div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="toggle-knob"></div></div>
+            </div>
+            
+            <div class="feature-toggle">
+                <div class="feature-info">
+                    <div class="feature-title">Legacy API Deprecation</div>
+                    <div class="feature-desc">Force v3 API usage across all tenants.</div>
+                </div>
+                <div class="toggle-switch" onclick="this.classList.toggle('active')"><div class="toggle-knob"></div></div>
+            </div>
+            
+            <div class="feature-toggle" style="margin-bottom: 0;">
+                <div class="feature-info">
+                    <div class="feature-title">Automated Billing Alerts</div>
+                    <div class="feature-desc">Send systemic pre-dunning notices.</div>
+                </div>
+                <div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="toggle-knob"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pricing Configuration Modal -->
+<div class="modal fade" id="pricingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title fw-bold text-dark">Pricing Configuration</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Basic Tier Price (₹)</label>
+            <input type="number" class="form-control" value="4000" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Pro Tier Price (₹)</label>
+            <input type="number" class="form-control" value="16500" required>
+          </div>
+          <div class="modal-footer border-0 pt-0 px-0">
+            <button type="button" class="btn btn-light fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary fw-bold" style="background-color: var(--primary); border: none;" data-bs-dismiss="modal" onclick="alert('Pricing models updated. Changes will be effective next billing cycle.')">Update Pricing</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

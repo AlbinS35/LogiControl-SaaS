@@ -1,0 +1,230 @@
+{% extends 'enterprise_base.html' %}
+
+{% block title %}Enterprise Admin - LogiControl India{% endblock %}
+
+{% block enterprise_content %}
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Operational Nerve Center</h2>
+        <p class="text-muted mb-0">Real-time oversight of your Indian logistics network</p>
+    </div>
+    <div>
+        <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3 py-2 border border-success border-opacity-25">
+            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; vertical-align: middle;"></i> LIVE NETWORK ACTIVE
+        </span>
+    </div>
+</div>
+
+<!-- KPI Cards Row -->
+<div class="row g-3 mb-4">
+    <!-- Active Trips -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between mb-3">
+                <div class="kpi-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-arrow-left-right"></i></div>
+                <span class="text-success fw-bold small">+12% vs LW</span>
+            </div>
+            <div class="text-muted small fw-bold mb-1">ACTIVE TRIPS</div>
+            <div class="kpi-value">{{ active_trips_count|default:"142" }}</div>
+            <div class="mt-auto">
+                <div class="perf-bar" style="height: 4px;"><div class="perf-fill bg-primary" style="width: 75%;"></div></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Idle Drivers -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between mb-3">
+                <div class="kpi-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-person-slash"></i></div>
+                <span class="text-danger fw-bold small">Action Required</span>
+            </div>
+            <div class="text-muted small fw-bold mb-1">IDLE DRIVERS</div>
+            <div class="kpi-value">{{ available_drivers.count|default:"28" }}</div>
+            <div class="mt-auto d-flex gap-2">
+                <span class="status-badge bg-light text-muted border">12 RESTING</span>
+                <span class="status-badge bg-light text-muted border">16 UNASSIGNED</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- In Maintenance -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between mb-3">
+                <div class="kpi-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-wrench"></i></div>
+                <span class="text-danger fw-bold small">High Priority</span>
+            </div>
+            <div class="text-muted small fw-bold mb-1">IN MAINTENANCE</div>
+            <div class="kpi-value">09</div>
+            <div class="mt-auto">
+                <div class="text-muted small font-italic">{{ expiring_vehicles.count|default:"3" }} Vehicles due for RC renewal</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bill Approvals -->
+    <div class="col-md-3">
+        <div class="kpi-card">
+            <div class="d-flex justify-content-between mb-3">
+                <div class="kpi-icon bg-light text-dark border"><i class="bi bi-receipt"></i></div>
+                <a href="#" class="text-primary fw-bold text-decoration-none small">Review All</a>
+            </div>
+            <div class="text-muted small fw-bold mb-1">BILL APPROVALS</div>
+            <div class="kpi-value">₹4.2L</div>
+            <div class="mt-auto">
+                <div class="text-dark small fw-bold">{{ pending_trips.count|default:"24" }} Pending Vouchers</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Middle Section -->
+<div class="row g-4 mb-4">
+    <!-- Driver Fleet Status -->
+    <div class="col-lg-8">
+        <div class="table-panel h-100 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="fw-bold mb-0">Driver Fleet Status</h5>
+                    <div class="text-muted small">Real-time telemetry and duty logs</div>
+                </div>
+                <button class="btn btn-sm btn-link text-decoration-none text-primary fw-bold"><i class="bi bi-filter"></i> Filter Fleet</button>
+            </div>
+            
+            <table class="table-clean flex-grow-1">
+                <thead>
+                    <tr>
+                        <th width="40%">DRIVER DETAILS</th>
+                        <th width="25%">LOCATION</th>
+                        <th width="20%">DUTY STATUS</th>
+                        <th width="15%" class="text-end">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trip in active_trips_list %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="https://ui-avatars.com/api/?name={{ trip.driver.get_full_name|default:trip.driver.username }}&background=random" class="driver-avatar me-3">
+                                <div>
+                                    <div class="fw-bold text-dark fs-6">{{ trip.driver.get_full_name|default:trip.driver.username }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">DL: {{ trip.driver.driving_license|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="small text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> {{ trip.end_location }}</span></td>
+                        <td><span class="status-badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2">ON-DUTY</span></td>
+                        <td class="text-end"><a href="{% url 'route_analytics' %}" class="text-primary"><i class="bi bi-eye"></i></a></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">No drivers currently on-trip.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="text-center mt-3 pt-3 border-top bg-light rounded py-2">
+                <a href="#" class="text-primary text-decoration-none fw-bold" style="font-size: 0.75rem;">VIEW ALL 124 DRIVERS</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column (Expiring Docs + Financial) -->
+    <div class="col-lg-4 d-flex flex-column gap-3">
+        <!-- Expiring Documents -->
+        <div class="table-panel flex-grow-1" style="background-color: #fafbfd;">
+            <h6 class="fw-bold text-muted mb-3 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Expiring Documents</h6>
+            
+            {% for vehicle in expiring_vehicles|slice:":3" %}
+            <div class="expiry-list-item {% if forloop.last %}border-bottom-0 pb-0 mb-3{% endif %}">
+                <div class="days-badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-exclamation-circle"></i></div>
+                <div>
+                    <div class="fw-bold text-dark fs-6">{{ vehicle.registration_number }}</div>
+                    <div class="text-muted" style="font-size: 0.7rem;">Document Expiry Approaching</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-muted small mb-3">No immediate expiries detected.</div>
+            {% endfor %}
+            
+            <a href="{% url 'fleet_registry' %}" class="btn btn-outline-primary w-100 fw-bold rounded-3" style="font-size: 0.8rem; border-color: #0b4a99; color: #0b4a99;">MANAGE REGISTRY</a>
+        </div>
+        
+        <!-- Financial Hub -->
+        <div class="financial-hub shadow-sm position-relative">
+            <!-- Abstract watermark shape -->
+            <i class="bi bi-wallet2 position-absolute" style="font-size: 8rem; right: -20px; bottom: -30px; opacity: 0.1;"></i>
+            
+            <h6 class="fw-bold text-white mb-4 text-uppercase" style="font-size: 0.75rem; letter-spacing: 1px;">Financial Hub</h6>
+            
+            <div class="fin-row border-bottom border-white border-opacity-25 pb-2">
+                <span style="font-size: 0.85rem;" class="text-white-50">MTD Fuel Expense</span>
+                <span class="fw-bold fs-6">₹12,42,000</span>
+            </div>
+            <div class="fin-row border-bottom border-white border-opacity-25 pb-2">
+                <span style="font-size: 0.85rem;" class="text-white-50">Pending Salaries</span>
+                <span class="fw-bold fs-6">{{ payrolls.count }} Payrolls</span>
+            </div>
+            <div class="fin-row mb-4">
+                <span style="font-size: 0.85rem;" class="text-white-50">Pending Vouchers</span>
+                <span class="fw-bold fs-6">{{ pending_trips.count }} Trips</span>
+            </div>
+            
+            <div class="d-flex gap-2 position-relative z-1">
+                <a href="{% url 'revenue_dashboard' %}" class="btn btn-light text-primary fw-bold flex-grow-1 rounded-3" style="font-size: 0.85rem;">REVIEW REVENUE</a>
+                <button class="btn btn-primary bg-opacity-25 border-0 rounded-3"><i class="bi bi-chevron-right text-white"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Row: Map and Performance -->
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="map-card shadow-sm border border-light">
+            <div class="map-legend">
+                <div class="text-uppercase fw-bold text-muted mb-2" style="font-size: 0.6rem; letter-spacing: 1px;">Network Density</div>
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.4rem;"></i>
+                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">North Hub: 42 Trucks</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.4rem;"></i>
+                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Port Cluster: 88 Trucks</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="table-panel h-100">
+            <h5 class="fw-bold text-dark mb-2">Fleet Performance</h5>
+            <p class="text-muted mb-4" style="font-size: 0.8rem;">Aggregate utilization and efficiency metrics across the national fleet.</p>
+            
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">Utilization</span>
+                    <span class="text-primary fw-bold" style="font-size: 0.75rem;">88%</span>
+                </div>
+                <div class="perf-bar"><div class="perf-fill bg-primary" style="width: 88%;"></div></div>
+            </div>
+            
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">On-Time Delivery</span>
+                    <span class="text-success fw-bold" style="font-size: 0.75rem;">94.2%</span>
+                </div>
+                <div class="perf-bar"><div class="perf-fill bg-success" style="width: 94.2%;"></div></div>
+            </div>
+            
+            <div class="mb-0">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-dark fw-bold text-uppercase" style="font-size: 0.65rem;">Fuel Efficiency</span>
+                    <span class="text-danger fw-bold" style="font-size: 0.75rem;">72%</span>
+                </div>
+                <div class="perf-bar"><div class="perf-fill" style="background-color: #cc5500; width: 72%;"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

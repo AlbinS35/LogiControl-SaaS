@@ -1,0 +1,232 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogiTracker – Precision Pricing for Every Fleet</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;color:#1e293b;background:#fff}
+a{text-decoration:none}
+
+/* NAVBAR */
+.navbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 6%;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100}
+.nav-brand{font-size:1.15rem;font-weight:800;color:#0f172a;letter-spacing:-.3px}
+.nav-brand span{color:#2563eb}
+.nav-links{display:flex;gap:2.2rem}
+.nav-links a{color:#64748b;font-size:.85rem;font-weight:500;transition:color .2s;padding-bottom:2px}
+.nav-links a:hover{color:#0f172a}
+.nav-links a.active{color:#2563eb;border-bottom:2px solid #2563eb;font-weight:600}
+.btn-signin{background:#2563eb;color:#fff;padding:.45rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+.btn-signin:hover{background:#1d4ed8;color:#fff}
+
+/* HERO */
+.pricing-hero{text-align:center;padding:5rem 5% 3.5rem;background:#fff}
+.pricing-hero h1{font-size:2.4rem;font-weight:900;color:#0f172a;margin-bottom:.7rem}
+.pricing-hero p{color:#64748b;font-size:.97rem;max-width:420px;margin:0 auto;line-height:1.6}
+
+/* CARDS */
+.cards-wrap{padding:2rem 5% 4rem;display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:1.5rem;max-width:900px;margin:0 auto;align-items:start}
+.plan-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:2rem}
+.plan-card.popular{border-color:#2563eb;position:relative;box-shadow:0 8px 32px rgba(37,99,235,.12)}
+.popular-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;font-size:.65rem;font-weight:700;letter-spacing:1.5px;padding:.3rem .9rem;border-radius:100px}
+.plan-label{font-size:.75rem;font-weight:600;color:#2563eb;margin-bottom:.8rem}
+.plan-label.dark{color:#0f172a}
+.plan-price{font-size:2.2rem;font-weight:900;color:#0f172a;line-height:1}
+.plan-price .cur{font-size:1.3rem;font-weight:700;vertical-align:top;margin-top:.3rem;display:inline-block}
+.plan-price .per{font-size:.82rem;font-weight:500;color:#64748b}
+.plan-price.custom-price{font-size:2rem}
+.plan-desc{font-size:.82rem;color:#64748b;margin:.6rem 0 1.4rem;line-height:1.5}
+.plan-features{list-style:none;margin-bottom:2rem;display:flex;flex-direction:column;gap:.6rem}
+.plan-features li{display:flex;align-items:center;gap:.5rem;font-size:.83rem;color:#334155}
+.plan-features li i{color:#22c55e;font-size:.9rem;flex-shrink:0}
+.plan-features li.bold{font-weight:600;color:#0f172a}
+.btn-plan{width:100%;padding:.78rem;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;border:1.5px solid #2563eb;color:#2563eb;background:#fff}
+.btn-plan:hover{background:#eff6ff}
+.btn-plan.filled{background:#2563eb;color:#fff;border-color:#2563eb}
+.btn-plan.filled:hover{background:#1d4ed8}
+.btn-plan.outline-dark{border-color:#0f172a;color:#0f172a}
+.btn-plan.outline-dark:hover{background:#f8fafc}
+
+/* COMPARISON TABLE */
+.comparison{background:#f8fafc;padding:5rem 5%}
+.comparison h2{font-size:1.8rem;font-weight:800;text-align:center;color:#0f172a;margin-bottom:.5rem}
+.comparison .sub{text-align:center;color:#64748b;font-size:.9rem;margin-bottom:2.5rem}
+.comp-table{width:100%;max-width:860px;margin:0 auto;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #e2e8f0}
+.comp-table th{padding:.9rem 1.2rem;font-size:.72rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:#f8fafc;border-bottom:1.5px solid #e2e8f0;text-align:left}
+.comp-table th.col-pro{color:#2563eb}
+.comp-table td{padding:.85rem 1.2rem;font-size:.83rem;color:#475569;border-bottom:1px solid #f1f5f9}
+.comp-table tr:last-child td{border-bottom:none}
+.comp-table td:first-child{font-weight:600;color:#0f172a}
+.comp-table td.col-pro{font-weight:600;color:#2563eb}
+.icon-no{color:#cbd5e1}
+.icon-yes{color:#22c55e}
+
+/* CTA BANNER */
+.cta-banner{margin:3rem 5%;border-radius:18px;background:#1e293b;display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:center;padding:3rem 3.5rem;overflow:hidden;position:relative}
+.cta-banner-text h3{font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:.6rem}
+.cta-banner-text p{font-size:.87rem;color:#94a3b8;line-height:1.6;margin-bottom:1.5rem}
+.cta-btns{display:flex;gap:.8rem;flex-wrap:wrap}
+.btn-cta-white{background:#2563eb;color:#fff;padding:.7rem 1.5rem;border-radius:9px;font-size:.87rem;font-weight:700;border:none;cursor:pointer;transition:all .2s}
+.btn-cta-white:hover{background:#1d4ed8;color:#fff}
+.btn-cta-outline{background:transparent;border:1.5px solid #475569;color:#94a3b8;padding:.7rem 1.5rem;border-radius:9px;font-size:.87rem;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-cta-outline:hover{border-color:#94a3b8;color:#fff}
+.cta-image{border-radius:12px;overflow:hidden;height:200px}
+.cta-image img{width:100%;height:100%;object-fit:cover;opacity:.8}
+
+/* FOOTER */
+footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:1.5rem 5%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.footer-brand-sm{font-size:1rem;font-weight:800;color:#0f172a}
+.footer-brand-sm span{color:#2563eb}
+.footer-links{display:flex;gap:1.5rem;flex-wrap:wrap}
+.footer-links a{font-size:.78rem;color:#64748b;font-weight:500}
+.footer-links a:hover{color:#2563eb}
+.footer-copy{font-size:.75rem;color:#94a3b8}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="{% url 'home' %}" class="nav-brand">Logi<span>Tracker</span></a>
+  <div class="nav-links">
+    <a href="{% url 'home' %}">Solutions</a>
+    <a href="{% url 'pricing' %}" class="active">Pricing</a>
+    <a href="{% url 'resources' %}">Resources</a>
+  </div>
+  <a href="{% url 'login' %}" class="btn-signin">Sign In</a>
+</nav>
+
+<!-- HERO -->
+<div class="pricing-hero">
+  <h1>Precision Pricing for Every Fleet</h1>
+  <p>Transparent, high-speed logistics management designed for reliability. Choose the plan that fuels your motion.</p>
+</div>
+
+<!-- PLAN CARDS -->
+<div class="cards-wrap">
+
+  <!-- STARTER -->
+  <div class="plan-card">
+    <div class="plan-label dark">Starter</div>
+    <div class="plan-price"><span class="cur">₹</span>12,500<span class="per">/month</span></div>
+    <p class="plan-desc">Essential tracking for emerging fleets.</p>
+    <ul class="plan-features">
+      <li><i class="bi bi-check-circle-fill"></i> Up to 10 Vehicles</li>
+      <li><i class="bi bi-check-circle-fill"></i> Real-time GPS Tracking</li>
+      <li><i class="bi bi-check-circle-fill"></i> Email Support</li>
+    </ul>
+    <a href="{% url 'owner_signup' %}" class="btn-plan">Buy Now</a>
+  </div>
+
+  <!-- FLEET PRO (POPULAR) -->
+  <div class="plan-card popular">
+    <div class="popular-badge">MOST POPULAR</div>
+    <div class="plan-label">Fleet Pro</div>
+    <div class="plan-price"><span class="cur">₹</span>42,000<span class="per">/month</span></div>
+    <p class="plan-desc">High-energy analytics for growing operators.</p>
+    <ul class="plan-features">
+      <li class="bold"><i class="bi bi-check-circle-fill"></i> Up to 50 Vehicles</li>
+      <li><i class="bi bi-check-circle-fill"></i> Advanced Route Optimization</li>
+      <li><i class="bi bi-check-circle-fill"></i> Predictive Maintenance Alerts</li>
+      <li><i class="bi bi-check-circle-fill"></i> Priority 24/7 Support</li>
+    </ul>
+    <a href="{% url 'owner_signup' %}" class="btn-plan filled">Buy Now</a>
+  </div>
+
+  <!-- ENTERPRISE -->
+  <div class="plan-card">
+    <div class="plan-label dark">Enterprise</div>
+    <div class="plan-price custom-price">Custom</div>
+    <p class="plan-desc">Total control for global logistics giants.</p>
+    <ul class="plan-features">
+      <li><i class="bi bi-check-circle-fill"></i> Unlimited Vehicles</li>
+      <li><i class="bi bi-check-circle-fill"></i> Dedicated Account Manager</li>
+      <li><i class="bi bi-check-circle-fill"></i> API & Custom Integrations</li>
+      <li><i class="bi bi-check-circle-fill"></i> On-site Fleet Training</li>
+    </ul>
+    <a href="{% url 'login' %}" class="btn-plan outline-dark">Contact Sales</a>
+  </div>
+
+</div>
+
+<!-- COMPARISON TABLE -->
+<section class="comparison">
+  <h2>Detailed Comparison</h2>
+  <p class="sub">Analyze the precision of each plan.</p>
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>STARTER</th>
+        <th class="col-pro">FLEET PRO</th>
+        <th>ENTERPRISE</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Fleet Capacity</td>
+        <td>10 Vehicles</td>
+        <td class="col-pro">50 Vehicles</td>
+        <td>Unlimited</td>
+      </tr>
+      <tr>
+        <td>Analytics Dashboard</td>
+        <td>Basic Reports</td>
+        <td class="col-pro">Advanced + Predictive</td>
+        <td>Custom BI Integration</td>
+      </tr>
+      <tr>
+        <td>Support Response</td>
+        <td>24–48 Hours</td>
+        <td class="col-pro">Priority (&lt; 4 Hours)</td>
+        <td>Instant Support</td>
+      </tr>
+      <tr>
+        <td>Driver Safety Monitoring</td>
+        <td><i class="bi bi-x-circle icon-no"></i></td>
+        <td class="col-pro"><i class="bi bi-check-circle-fill icon-yes"></i></td>
+        <td><i class="bi bi-check-circle-fill icon-yes"></i></td>
+      </tr>
+      <tr>
+        <td>Custom Geofencing</td>
+        <td>3 Zones</td>
+        <td class="col-pro">Unlimited</td>
+        <td>Unlimited + Dynamic</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- CTA BANNER -->
+<div class="cta-banner">
+  <div class="cta-banner-text">
+    <h3>Ready to scale your precision?</h3>
+    <p>Join over 2,500 logistics companies optimizing their fleet performance with LogiTracker's real-time command center.</p>
+    <div class="cta-btns">
+      <a href="{% url 'owner_signup' %}" class="btn-cta-white">Buy Now</a>
+      <a href="{% url 'login' %}" class="btn-cta-outline">Buy Now</a>
+    </div>
+  </div>
+  <div class="cta-image">
+    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=700&q=80" alt="Command Center">
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand-sm">Logi<span>Tracker</span></div>
+  <div class="footer-links">
+    <a href="#">Terms of Service</a>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Contact Support</a>
+    <a href="#">API Status</a>
+  </div>
+  <span class="footer-copy">© 2024 LogiTracker Systems. Precision in Motion.</span>
+</footer>
+
+</body>
+</html>

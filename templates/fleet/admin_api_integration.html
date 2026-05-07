@@ -1,0 +1,167 @@
+{% extends 'fleet/admin_base.html' %}
+
+{% block title %}API & Integration - LogiControl{% endblock %}
+
+{% block header_left %}
+<div class="header-tabs">
+    <a href="#" class="header-tab">FLEET</a>
+    <a href="#" class="header-tab">DRIVERS</a>
+    <a href="#" class="header-tab">ALERTS</a>
+</div>
+{% endblock %}
+
+
+
+{% block extra_css %}
+<style>
+    .page-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem; }
+    .page-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; }
+
+    .panel { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; height: 100%; }
+    
+    .status-badge-online { background: #dcfce7; color: #166534; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 12px; border: 1px solid #86efac; display: inline-flex; align-items: center; gap: 0.3rem;}
+    
+    .stat-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 1.2rem; }
+    .stat-title { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .stat-val { font-size: 2.2rem; font-weight: 800; color: var(--text-main); display: flex; align-items: baseline; gap: 0.2rem;}
+    .stat-unit { font-size: 1rem; font-weight: 600; color: var(--text-muted); }
+
+    .docs-panel { background: #0336b5; border-radius: 8px; padding: 2rem; color: white; height: 100%; position: relative; overflow: hidden; }
+    .docs-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; position: relative; z-index: 2; }
+    .docs-sub { font-size: 0.85rem; color: #bfdbfe; margin-bottom: 2rem; line-height: 1.5; position: relative; z-index: 2; }
+    
+    .docs-btn { 
+        display: flex; justify-content: space-between; align-items: center; width: 100%; 
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); 
+        padding: 0.8rem 1rem; border-radius: 6px; color: white; font-weight: 600; font-size: 0.85rem;
+        margin-bottom: 0.8rem; text-decoration: none; position: relative; z-index: 2; transition: background 0.2s;
+    }
+    .docs-btn:hover { background: rgba(255,255,255,0.2); color: white;}
+    
+    .bg-pattern { position: absolute; top: 0; right: 0; opacity: 0.1; width: 150px; }
+
+    .integration-card { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; }
+    .integration-card.error { border-color: #fca5a5; }
+    .int-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+    .int-icon-wrapper { display: flex; align-items: center; gap: 1rem; }
+    .int-icon { width: 40px; height: 40px; background: var(--bg-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .int-icon.blue { color: #2563eb; background: #eff6ff; }
+    .int-icon.red { color: #dc2626; background: #fef2f2; }
+    .int-name { font-weight: 700; font-size: 0.95rem; margin: 0; color: var(--text-main); }
+    .int-type { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+    .int-action-req { font-size: 0.7rem; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 0.3rem; margin-top: 0.2rem;}
+    
+    .int-stat-row { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 0.4rem; }
+    .int-stat-lbl { color: var(--text-muted); }
+    .int-stat-val { font-weight: 600; color: var(--text-main); }
+    .int-stat-val.red { color: #dc2626; }
+    .int-stat-val.green { color: #16a34a; }
+    
+    .int-progress { height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 1.5rem; }
+    .int-fill { height: 100%; border-radius: 3px; }
+    .int-fill.blue { background: #2563eb; }
+    .int-fill.green { background: #16a34a; }
+    .int-fill.red { background: #dc2626; }
+    
+    .int-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+    .int-key-box { background: var(--bg-light); padding: 0.3rem 0.6rem; border-radius: 4px; font-family: monospace; font-size: 0.75rem; color: var(--text-muted); border: 1px solid var(--border-color);}
+    .int-sync { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; }
+    .int-env { font-size: 0.75rem; color: var(--text-muted); }
+    .int-btn { font-size: 0.8rem; font-weight: 700; color: #2563eb; text-decoration: none; cursor: pointer; }
+    .int-btn.red { color: #dc2626; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="page-title">API & Integration Hub</h1>
+    <p class="page-sub">Manage external connections, monitor usage quotas, and configure tenant webhooks.</p>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-8">
+        <div class="panel">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0;">Global API Health</h3>
+                <span class="status-badge-online"><i class="bi bi-check-circle"></i> ONLINE</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2rem;">Real-time success rates across all active integrations</p>
+            
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Average Latency</div>
+                        <div class="stat-val">142 <span class="stat-unit">ms</span></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Success Rate</div>
+                        <div class="stat-val">99.9 <span class="stat-unit">%</span></div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <div class="stat-title">Total Requests (24h)</div>
+                        <div class="stat-val">4.2 <span class="stat-unit">M</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="docs-panel">
+            <svg class="bg-pattern" viewBox="0 0 100 100" fill="white" xmlns="http://www.w3.org/2000/svg">
+                <rect x="10" y="10" width="30" height="30" rx="4"/>
+                <rect x="50" y="10" width="30" height="30" rx="4"/>
+                <rect x="10" y="50" width="30" height="30" rx="4"/>
+                <rect x="50" y="50" width="30" height="30" rx="4"/>
+            </svg>
+            <h3 class="docs-title">Integration Docs</h3>
+            <p class="docs-sub">Access technical documentation for tenant-facing webhooks and custom API endpoints.</p>
+            
+            <a href="#" class="docs-btn">Webhook Payload Specs <i class="bi bi-arrow-right"></i></a>
+            <a href="#" class="docs-btn">Generate Test Tokens <i class="bi bi-key"></i></a>
+        </div>
+    </div>
+</div>
+
+<h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-main);">Active Integrations</h3>
+
+<div class="row g-4">
+    {% for integration in integrations %}
+    <div class="col-md-4">
+        <div class="integration-card {% if integration.status_cls == 'warning' %}error{% endif %}">
+            <div class="int-top">
+                <div class="int-icon-wrapper">
+                    <div class="int-icon {% if integration.status_cls == 'warning' %}red{% else %}blue{% endif %}"><i class="bi bi-plugin"></i></div>
+                    <div>
+                        <p class="int-name">{{ integration.name }}</p>
+                        {% if integration.status_cls == 'warning' %}
+                        <p class="int-action-req"><i class="bi bi-exclamation-triangle"></i> Action Required</p>
+                        {% else %}
+                        <p class="int-type">{{ integration.type }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <i class="bi bi-three-dots-vertical" style="color: var(--text-muted); cursor: pointer;"></i>
+            </div>
+            
+            <div class="int-stat-row">
+                <span class="int-stat-lbl">Uptime</span>
+                <span class="int-stat-val {% if integration.status_cls == 'warning' %}red{% else %}green{% endif %}">{{ integration.uptime }}</span>
+            </div>
+            <div class="int-progress">
+                <div class="int-fill {% if integration.status_cls == 'warning' %}red{% else %}blue{% endif %}" style="width: {{ integration.uptime|slice:":-1" }}%;"></div>
+            </div>
+            
+            <div class="int-footer">
+                <div class="int-sync"><i class="bi bi-clock"></i> Latency: {{ integration.latency }}</div>
+                <a class="int-btn {% if integration.status_cls == 'warning' %}red{% endif %}">{% if integration.status_cls == 'warning' %}Review Logs{% else %}Manage Key{% endif %}</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
