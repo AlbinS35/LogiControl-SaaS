@@ -98,6 +98,17 @@ DATABASES = {
 db_from_env = dj_database_url.config(conn_max_age=600)
 if db_from_env:
     DATABASES['default'].update(db_from_env)
+    
+    # TiDB Serverless strictly requires SSL transport
+    if 'OPTIONS' not in DATABASES['default']:
+        DATABASES['default']['OPTIONS'] = {}
+    
+    # On Render (Linux), the standard CA path works for TiDB
+    if 'tidbcloud.com' in DATABASES['default'].get('HOST', ''):
+        DATABASES['default']['OPTIONS']['ssl_mode'] = 'VERIFY_IDENTITY'
+        DATABASES['default']['OPTIONS']['ssl'] = {
+            'ca': '/etc/ssl/certs/ca-certificates.crt'
+        }
 
 # ──────────────────────────────────────────────────────────
 #  AUTH
