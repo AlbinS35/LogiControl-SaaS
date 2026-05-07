@@ -1,0 +1,29 @@
+# LogiTracker Fleet Management System – Python Dependencies
+
+# Core
+Django>=5.0,<5.2
+mysqlclient>=2.2.0,<2.3
+
+# Image handling
+Pillow>=10.2.0
+
+# Forms
+django-crispy-forms>=2.1
+crispy-bootstrap5>=2024.2
+
+# Google OAuth / Social Auth
+django-allauth>=0.61.0
+PyJWT>=2.8.0
+cryptography>=41.0.0
+
+# Google Maps (server-side routing)
+googlemaps>=4.10.0
+
+# Email (production SMTP)
+# Uncomment when deploying:
+# django-anymail[sendgrid]>=10.0
+
+# Production Hosting
+gunicorn>=21.2.0
+whitenoise>=6.6.0
+dj-database-url>=2.1.0

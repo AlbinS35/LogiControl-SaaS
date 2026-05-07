@@ -4,7 +4,7 @@ Django settings for logistics_fleet – LogiTracker SaaS Platform.
 from pathlib import Path
 import os
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # ──────────────────────────────────────────────────────────
 #  SECURITY

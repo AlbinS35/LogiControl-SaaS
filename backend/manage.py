@@ -3,16 +3,10 @@
 import os
 import sys
 
+
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'logistics_fleet.settings')
-    
-    # Add backend directory to sys.path so we can find logistics_fleet and fleet
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    backend_dir = os.path.join(current_dir, 'backend')
-    if os.path.exists(backend_dir) and backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
-        
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -22,6 +16,7 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
     execute_from_command_line(sys.argv)
+
 
 if __name__ == '__main__':
     main()
