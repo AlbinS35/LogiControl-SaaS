@@ -13,17 +13,6 @@
 {% endblock %}
 
 {% block enterprise_content %}
-<!-- Display messages -->
-{% if messages %}
-<div class="mb-3">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Settings</h2>
@@ -234,16 +223,18 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-muted">Appearance Mode</label>
                             <div class="d-flex gap-3">
-                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if request.user.appearance_mode == 'light' %}border-primary{% endif %}" style="cursor: pointer;">
-                                    <input type="radio" name="appearance_mode" value="light" class="d-none" {% if request.user.appearance_mode == 'light' %}checked{% endif %}>
-                                    <i class="bi bi-sun fs-4 mb-1 d-block {% if request.user.appearance_mode == 'light' %}text-primary{% else %}text-muted{% endif %}"></i>
-                                    <div class="fw-bold {% if request.user.appearance_mode == 'light' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Light Mode</div>
+                                {% with mode=request.user.appearance_mode|default:'light' %}
+                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if mode == 'light' %}border-primary{% else %}opacity-50{% endif %}" style="cursor: pointer;">
+                                    <input type="radio" name="appearance_mode" value="light" class="d-none" {% if mode == 'light' %}checked{% endif %}>
+                                    <i class="bi bi-sun fs-4 mb-1 d-block {% if mode == 'light' %}text-primary{% else %}text-muted{% endif %}"></i>
+                                    <div class="fw-bold {% if mode == 'light' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Light Mode</div>
                                 </label>
-                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if request.user.appearance_mode == 'dark' %}border-primary{% else %}opacity-50{% endif %}" style="cursor: pointer;">
-                                    <input type="radio" name="appearance_mode" value="dark" class="d-none" {% if request.user.appearance_mode == 'dark' %}checked{% endif %}>
-                                    <i class="bi bi-moon fs-4 mb-1 d-block {% if request.user.appearance_mode == 'dark' %}text-primary{% else %}text-muted{% endif %}"></i>
-                                    <div class="fw-bold {% if request.user.appearance_mode == 'dark' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Dark Mode</div>
+                                <label class="border rounded-3 py-3 px-4 text-center bg-white shadow-sm flex-grow-1 {% if mode == 'dark' %}border-primary{% else %}opacity-50{% endif %}" style="cursor: pointer;">
+                                    <input type="radio" name="appearance_mode" value="dark" class="d-none" {% if mode == 'dark' %}checked{% endif %}>
+                                    <i class="bi bi-moon fs-4 mb-1 d-block {% if mode == 'dark' %}text-primary{% else %}text-muted{% endif %}"></i>
+                                    <div class="fw-bold {% if mode == 'dark' %}text-primary{% else %}text-muted{% endif %}" style="font-size: 0.75rem;">Dark Mode</div>
                                 </label>
+                                {% endwith %}
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -267,4 +258,38 @@
     </div>
 </form>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll('input[name="appearance_mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const theme = this.value;
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            
+            // Update UI styling for radio buttons
+            document.querySelectorAll('input[name="appearance_mode"]').forEach(r => {
+                const label = r.closest('label');
+                const icon = label.querySelector('i');
+                const text = label.querySelector('.fw-bold');
+                
+                if (r.checked) {
+                    label.classList.add('border-primary');
+                    label.classList.remove('opacity-50');
+                    icon.classList.add('text-primary');
+                    icon.classList.remove('text-muted');
+                    text.classList.add('text-primary');
+                    text.classList.remove('text-muted');
+                } else {
+                    label.classList.remove('border-primary');
+                    label.classList.add('opacity-50');
+                    icon.classList.remove('text-primary');
+                    icon.classList.add('text-muted');
+                    text.classList.remove('text-primary');
+                    text.classList.add('text-muted');
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

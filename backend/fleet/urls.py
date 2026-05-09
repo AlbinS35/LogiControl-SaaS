@@ -13,6 +13,12 @@ urlpatterns = [
     ), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
     path('signup/', views.owner_signup, name='owner_signup'),
+    
+    # ── Footer Links ─────────────────────────────
+    path('help-center/', views.help_center, name='help_center'),
+    path('privacy-policy/', views.privacy_policy, name='privacy_policy'),
+    path('terms-of-service/', views.terms_of_service, name='terms_of_service'),
+    path('contact-support/', views.contact_support, name='contact_support'),
 
     # ── Password Reset Flow ───────────────────────────────
     path('password-reset/', auth_views.PasswordResetView.as_view(
@@ -29,6 +35,9 @@ urlpatterns = [
         success_url='/login/',
     ), name='password_reset_confirm'),
 
+    # ── Password Change Flow ─────────────────────────────
+    path('password-change/', views.force_password_change, name='password_change'),
+
     # ── Dashboard Routing ─────────────────────────────────
     path('dashboard/', views.dashboard_redirect, name='dashboard'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
@@ -44,6 +53,11 @@ urlpatterns = [
     # ── Driver Actions ────────────────────────────────────
     path('driver/action/<int:trip_id>/<str:action>/', views.driver_action, name='driver_action'),
     path('driver/trip/<int:trip_id>/', views.driver_trip_update, name='driver_trip_update'),
+    path('driver/settings/', views.driver_settings, name='driver_settings'),
+    path('driver/fuel/', views.driver_fuel_registry, name='driver_fuel_registry'),
+    path('driver/revenue/', views.driver_revenue, name='driver_revenue'),
+    path('driver/route/', views.driver_route_analytics, name='driver_route_analytics'),
+    path('driver/health/', views.driver_vehicle_health, name='driver_vehicle_health'),
 
     # ── Manager – Fleet ───────────────────────────────────
     path('fleet-registry/', views.fleet_registry, name='fleet_registry'),
@@ -55,6 +69,10 @@ urlpatterns = [
     path('trip-allocation/', views.trip_allocation, name='trip_allocation'),
     path('route-analytics/', views.route_analytics, name='route_analytics'),
     path('route-analytics/export/', views.export_route_analytics, name='export_route_analytics'),
+    path('api/telemetry/', views.api_telemetry, name='api_telemetry'),
+    
+    # ── Universal Search ──────────────────────────────────
+    path('search/', views.universal_search, name='universal_search'),
 
     # ── Manager – Finance ─────────────────────────────────
     path('revenue/', views.revenue_dashboard, name='revenue_dashboard'),

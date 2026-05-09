@@ -68,6 +68,33 @@ class User(AbstractUser):
     invitation_token = models.CharField(max_length=64, null=True, blank=True, unique=True)
     invitation_accepted = models.BooleanField(default=False)
 
+    # Driver-specific onboarding & documents
+    LICENSE_CHOICES = (
+        ('LMV', 'Light Motor Vehicle (LMV)'),
+        ('HMV', 'Heavy Motor Vehicle (HMV)'),
+        ('Trailer', 'HPMV/HGMV with Trailer Endorsement'),
+    )
+    license_type = models.CharField(max_length=20, choices=LICENSE_CHOICES, null=True, blank=True)
+    hazmat_certified = models.BooleanField(default=False)
+    aadhaar_number = models.CharField(max_length=20, null=True, blank=True)
+    badge_number = models.CharField(max_length=50, null=True, blank=True)
+    
+    # Document Vault for Drivers
+    dl_front = models.FileField(upload_to='documents/driver/dl/', null=True, blank=True)
+    dl_back = models.FileField(upload_to='documents/driver/dl/', null=True, blank=True)
+    dl_expiry = models.DateField(null=True, blank=True)
+    medical_certificate = models.FileField(upload_to='documents/driver/medical/', null=True, blank=True)
+    medical_expiry = models.DateField(null=True, blank=True)
+    police_verification = models.FileField(upload_to='documents/driver/police/', null=True, blank=True)
+    police_verification_expiry = models.DateField(null=True, blank=True)
+    requires_password_change = models.BooleanField(default=False)
+
+    # Financial
+    contract_salary = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Monthly base salary (INR) — set by manager"
+    )
+
     def is_admin(self):
         return self.role == 'admin'
 
@@ -76,6 +103,20 @@ class User(AbstractUser):
 
     def is_driver(self):
         return self.role == 'driver'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.role == 'driver' and getattr(self, 'company', None):
+            from django.utils import timezone
+            if getattr(self, 'dl_expiry', None):
+                threshold = timezone.now().date() + timezone.timedelta(days=self.company.doc_expiry_lead_time)
+                if self.dl_expiry <= threshold:
+                    Alert.objects.get_or_create(
+                        company=self.company,
+                        alert_type='doc_expiry',
+                        message=f"Driving License for {self.get_full_name() or self.username} is expiring on {self.dl_expiry.strftime('%Y-%m-%d')}.",
+                        defaults={'status': 'unread'}
+                    )
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.role})"
@@ -102,6 +143,17 @@ class Vehicle(models.Model):
     current_odometer = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
 
+    VEHICLE_TYPE_CHOICES = (
+        ('lmv', 'Light Goods Vehicle / LMV (< 7.5t)'),
+        ('mhv', 'Medium Heavy Vehicle'),
+        ('torus', 'Torus'),
+        ('multi_axle', 'Multi Axle Truck'),
+        ('trailer', 'Trailer'),
+        ('other', 'Other'),
+    )
+    vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPE_CHOICES, default='other')
+    loading_capacity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Capacity in tons")
+
     # Document Vault
     rc_document = models.FileField(upload_to='documents/rc/', null=True, blank=True)
     rc_expiry = models.DateField(null=True, blank=True)
@@ -112,6 +164,20 @@ class Vehicle(models.Model):
     puc_certificate = models.FileField(upload_to='documents/puc/', null=True, blank=True)
     puc_expiry = models.DateField(null=True, blank=True)
 
+    # Telemetry Data
+    current_latitude  = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    current_longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    current_speed     = models.DecimalField(max_digits=6, decimal_places=2, default=0.00, help_text="Speed in km/h")
+    current_heading   = models.CharField(max_length=20, null=True, blank=True, help_text="e.g. North-East")
+    last_location_update = models.DateTimeField(null=True, blank=True)
+
+    # Vehicle Health Metrics (0-100, updated by IoT or manual entry)
+    engine_performance = models.PositiveSmallIntegerField(default=92, help_text="Engine score 0-100")
+    tire_integrity     = models.PositiveSmallIntegerField(default=96, help_text="Tyre score 0-100")
+    battery_life       = models.PositiveSmallIntegerField(default=54, help_text="Battery score 0-100")
+    engine_compression = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="PSI")
+    tire_pressure      = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="Bar")
+
     def __str__(self):
         return f"{self.registration_number} – {self.make} {self.model}"
 
@@ -119,6 +185,7 @@ class Vehicle(models.Model):
         """Return list of document names expiring within lead_days."""
         if lead_days is None:
             lead_days = self.company.doc_expiry_lead_time if self.company else 15
+        from django.utils import timezone
         threshold = timezone.now().date() + timezone.timedelta(days=lead_days)
         expiring = []
         for doc_name, expiry_field in [
@@ -167,6 +234,10 @@ class Trip(models.Model):
     # Odometer readings
     start_odometer = models.IntegerField(null=True, blank=True)
     end_odometer = models.IntegerField(null=True, blank=True)
+    total_distance_km = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Planned route distance in kilometres"
+    )
 
     # Driver trip logs
     fuel_level = models.CharField(max_length=50, null=True, blank=True)
@@ -182,6 +253,10 @@ class Trip(models.Model):
     # Financials
     fuel_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     toll_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonus_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Trip completion bonus awarded by manager (INR)"
+    )
     fuel_approved = models.BooleanField(default=False)
     toll_approved = models.BooleanField(default=False)
 
@@ -254,6 +329,55 @@ class Expense(models.Model):
 
 
 # ─────────────────────────────────────────────
+#  FUEL ENTRY  (Driver Fuel Registry)
+# ─────────────────────────────────────────────
+class FuelEntry(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING',  'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    driver  = models.ForeignKey(User, on_delete=models.CASCADE, related_name='fuel_entries')
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='fuel_entries')
+    trip    = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='fuel_entries')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='fuel_entries')
+
+    station_name      = models.CharField(max_length=255)
+    volume_liters     = models.DecimalField(max_digits=10, decimal_places=2)
+    cost_per_liter    = models.DecimalField(max_digits=8,  decimal_places=2, null=True, blank=True)
+    total_cost        = models.DecimalField(max_digits=10, decimal_places=2)
+    odometer_at_fill  = models.IntegerField(help_text='Odometer reading at the time of filling (km)')
+    receipt_image     = models.ImageField(upload_to='receipts/fuel_entries/', null=True, blank=True)
+    status            = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    notes             = models.TextField(null=True, blank=True)
+
+    timestamp  = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reviewed_fuel_entries'
+    )
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate cost_per_liter if not supplied
+        if self.volume_liters and self.total_cost and not self.cost_per_liter:
+            self.cost_per_liter = round(float(self.total_cost) / float(self.volume_liters), 2)
+        # Update vehicle odometer
+        if self.vehicle and self.odometer_at_fill:
+            if self.odometer_at_fill > self.vehicle.current_odometer:
+                self.vehicle.current_odometer = self.odometer_at_fill
+                self.vehicle.save(update_fields=['current_odometer'])
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Fuel – {self.station_name} | {self.volume_liters}L | ₹{self.total_cost} ({self.status})"
+
+
+# ─────────────────────────────────────────────
 #  PAYROLL
 # ─────────────────────────────────────────────
 class Payroll(models.Model):
@@ -323,3 +447,93 @@ class Alert(models.Model):
 
     def __str__(self):
         return f"[{self.alert_type}] {self.message[:60]}"
+
+
+# ─────────────────────────────────────────────
+#  MAINTENANCE RECORD  (Vehicle service log)
+# ─────────────────────────────────────────────
+class MaintenanceRecord(models.Model):
+    SERVICE_TYPE_CHOICES = [
+        ('routine',   'Routine Service'),
+        ('repair',    'Breakdown Repair'),
+        ('tyre',      'Tyre Replacement'),
+        ('oil',       'Oil Change'),
+        ('brake',     'Brake Service'),
+        ('electrical','Electrical Repair'),
+        ('bodywork',  'Bodywork / Denting'),
+        ('other',     'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('scheduled', 'Scheduled'),
+        ('in_progress','In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    company   = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='maintenance_records')
+    vehicle   = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='maintenance_records')
+    reported_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='reported_maintenance'
+    )
+
+    service_type  = models.CharField(max_length=20, choices=SERVICE_TYPE_CHOICES, default='routine')
+    description   = models.TextField()
+    garage_name   = models.CharField(max_length=255, null=True, blank=True)
+    cost          = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    odometer_at_service = models.IntegerField(null=True, blank=True)
+    status        = models.CharField(max_length=15, choices=STATUS_CHOICES, default='scheduled')
+
+    scheduled_date  = models.DateField(null=True, blank=True)
+    completed_date  = models.DateField(null=True, blank=True)
+    next_service_due= models.DateField(null=True, blank=True, help_text='Recommended next service date')
+
+    invoice_image   = models.ImageField(upload_to='maintenance/invoices/', null=True, blank=True)
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_service_type_display()} – {self.vehicle.registration_number} ({self.status})"
+
+
+# ─────────────────────────────────────────────
+#  MAINTENANCE LOG  (Manager-entered; linked to Driver Health view)
+# ─────────────────────────────────────────────
+class MaintenanceLog(models.Model):
+    STATUS_CHOICES = [
+        ('COMPLETED', 'Completed'),
+        ('UPCOMING',  'Upcoming'),
+        ('OVERDUE',   'Overdue'),
+    ]
+
+    vehicle               = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='maintenance_logs')
+    company               = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='maintenance_logs')
+    service_type          = models.CharField(max_length=100, help_text="e.g. Engine Tune-up, Tire Rotation")
+    last_service_date     = models.DateField()
+    next_scheduled_check  = models.DateField()
+    technician            = models.CharField(max_length=100)
+    status                = models.CharField(max_length=10, choices=STATUS_CHOICES, default='UPCOMING')
+    notes                 = models.TextField(blank=True)
+    created_by            = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='maintenance_logs_created'
+    )
+    created_at            = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-last_service_date']
+
+    def __str__(self):
+        return f"{self.service_type} — {self.vehicle.registration_number} [{self.status}]"
+
+    def save(self, *args, **kwargs):
+        """Auto-derive status from dates if not explicitly set by manager."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        if self.status not in ('COMPLETED',):
+            if self.next_scheduled_check < today:
+                self.status = 'OVERDUE'
+            else:
+                self.status = 'UPCOMING'
+        super().save(*args, **kwargs)

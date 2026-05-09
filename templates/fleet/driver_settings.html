@@ -1,0 +1,217 @@
+{% extends 'driver_base.html' %}
+
+{% block title %}My Profile - LogiControl India{% endblock %}
+
+{% block driver_content %}
+<style>
+    .settings-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .settings-card h5 {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .form-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 0.4rem;
+    }
+    .form-control, .form-select {
+        border: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        border-radius: 8px;
+        padding: 0.7rem 1rem;
+        font-size: 0.9rem;
+        color: #1e293b;
+    }
+    .form-control:focus, .form-select:focus {
+        background-color: #fff;
+        border-color: #0b4a99;
+        box-shadow: 0 0 0 0.2rem rgba(11,74,153,0.12);
+    }
+    .avatar-wrap {
+        position: relative;
+        width: 80px;
+        height: 80px;
+    }
+    .avatar-wrap img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid #e2e8f0;
+    }
+    .avatar-edit-btn {
+        position: absolute;
+        bottom: 0; right: 0;
+        background: #0b4a99;
+        color: white;
+        border: 2px solid white;
+        border-radius: 50%;
+        width: 26px; height: 26px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.65rem;
+        cursor: pointer;
+    }
+    .appearance-option {
+        flex: 1;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #f8fafc;
+    }
+    .appearance-option.selected {
+        border-color: #0b4a99;
+        background: #eff6ff;
+    }
+    .appearance-option i { font-size: 1.5rem; display: block; margin-bottom: 0.35rem; }
+    .appearance-option .lbl { font-size: 0.75rem; font-weight: 700; }
+</style>
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">My Profile</h4>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">Manage your personal details and preferences.</p>
+    </div>
+</div>
+
+<!-- Toast messages -->
+{% if messages %}
+<div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;">
+    {% for message in messages %}
+    <div class="toast show align-items-center text-white {% if message.tags == 'success' %}bg-success{% else %}bg-danger{% endif %} border-0 mb-2 rounded-3 shadow" role="alert">
+        <div class="d-flex">
+            <div class="toast-body fw-bold">{{ message }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <!-- Personal Info -->
+    <div class="settings-card shadow-sm">
+        <h5><i class="bi bi-person me-2 text-primary"></i>Personal Information</h5>
+
+        <div class="d-flex align-items-center gap-4 mb-4">
+            <div class="avatar-wrap">
+                {% if request.user.profile_picture %}
+                <img src="{{ request.user.profile_picture.url }}" alt="Profile">
+                {% else %}
+                <img src="https://ui-avatars.com/api/?name={{ request.user.first_name }}+{{ request.user.last_name }}&background=0b4a99&color=fff" alt="Profile">
+                {% endif %}
+                <div class="avatar-edit-btn" onclick="document.getElementById('picInput').click()">
+                    <i class="bi bi-camera"></i>
+                </div>
+                <input type="file" id="picInput" name="profile_picture" accept="image/*" style="display:none;">
+            </div>
+            <div>
+                <div class="fw-bold text-dark" style="font-size:1.05rem;">{{ request.user.get_full_name|default:request.user.username }}</div>
+                <div class="text-muted small">{{ request.user.username }}</div>
+                <span class="badge rounded-pill px-3 py-1 mt-1" style="background:#eff6ff;color:#0b4a99;font-size:0.7rem;font-weight:700;">DRIVER</span>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">First Name</label>
+                <input type="text" name="first_name" class="form-control" value="{{ request.user.first_name }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Last Name</label>
+                <input type="text" name="last_name" class="form-control" value="{{ request.user.last_name }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Personal Email</label>
+                <input type="email" name="email" class="form-control" value="{{ request.user.email }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Phone Number</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white text-muted border-end-0">+91</span>
+                    <input type="text" name="phone_number" class="form-control border-start-0" value="{{ request.user.phone_number }}">
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Work Email (Login ID)</label>
+                <input type="text" class="form-control" value="{{ request.user.username }}" disabled style="background:#f1f5f9;color:#64748b;">
+                <div class="form-text">This is your system-generated work email. Contact your manager to update it.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Preferences -->
+    <div class="settings-card shadow-sm">
+        <h5><i class="bi bi-sliders me-2 text-primary"></i>Preferences</h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Appearance</label>
+                <div class="d-flex gap-3" id="appearanceGroup">
+                    {% with mode=request.user.appearance_mode|default:'light' %}
+                    <label class="appearance-option {% if mode == 'light' %}selected{% endif %}">
+                        <input type="radio" name="appearance_mode" value="light" class="d-none" {% if mode == 'light' %}checked{% endif %}>
+                        <i class="bi bi-sun" style="color:#0b4a99;"></i>
+                        <div class="lbl" style="color:#0b4a99;">Light</div>
+                    </label>
+                    <label class="appearance-option {% if mode == 'dark' %}selected{% endif %}">
+                        <input type="radio" name="appearance_mode" value="dark" class="d-none" {% if mode == 'dark' %}checked{% endif %}>
+                        <i class="bi bi-moon" style="color:#64748b;"></i>
+                        <div class="lbl" style="color:#64748b;">Dark</div>
+                    </label>
+                    {% endwith %}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Language</label>
+                <select class="form-select" name="platform_language">
+                    <option value="English (India)" {% if request.user.platform_language == 'English (India)' %}selected{% endif %}>English (India)</option>
+                    <option value="Hindi" {% if request.user.platform_language == 'Hindi' %}selected{% endif %}>Hindi</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-end gap-3">
+        <a href="{% url 'driver_dashboard' %}" class="btn btn-link text-muted fw-bold text-decoration-none">Cancel</a>
+        <button type="submit" class="btn fw-bold px-4 rounded-3 shadow-sm" style="background-color:#0b4a99;border:none;color:white;">
+            <i class="bi bi-check-circle me-1"></i> Save Changes
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Appearance toggle visual
+    document.querySelectorAll('#appearanceGroup input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('#appearanceGroup .appearance-option').forEach(opt => opt.classList.remove('selected'));
+            this.closest('.appearance-option').classList.add('selected');
+        });
+    });
+    // Auto-dismiss toasts
+    setTimeout(() => { document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')); }, 3500);
+</script>
+{% endblock %}

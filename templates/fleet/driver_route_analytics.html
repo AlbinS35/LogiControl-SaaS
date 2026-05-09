@@ -1,0 +1,315 @@
+{% extends 'driver_base.html' %}
+{% block title %}Route Analytics – LogiControl India{% endblock %}
+
+{% block extra_css %}
+<style>
+    .map-wrap { position:relative; border-radius:1rem; overflow:hidden; height:480px; background:#e8eaed; }
+    #gmap     { width:100%; height:100%; }
+
+    /* Sidebar panel */
+    .route-panel { background:white; border-radius:1rem; border:1px solid #e2e8f0; overflow:hidden; }
+    .rp-section  { padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; }
+    .rp-label    { font-size:0.62rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; }
+    .rp-value    { font-size:1.1rem; font-weight:800; color:#1e293b; }
+    .rp-value-green { color:#22c55e; }
+
+    /* Progress bar */
+    .trip-bar    { background:#e2e8f0; border-radius:50px; height:8px; margin:0.5rem 0; overflow:hidden; }
+    .trip-bar-fill { height:100%; border-radius:50px; background:linear-gradient(90deg,#0b4a99,#3b82f6); transition:width 0.8s ease; }
+
+    /* Floating waypoint buttons */
+    .waypoint-btns { position:absolute; bottom:1.5rem; right:1rem; display:flex; flex-direction:column; gap:0.6rem; z-index:10; }
+    .wp-btn        { display:flex; align-items:center; gap:0.6rem; background:white; border:none;
+                     border-radius:50px; padding:0.65rem 1.2rem; font-size:0.82rem; font-weight:700;
+                     color:#1e293b; box-shadow:0 4px 16px rgba(0,0,0,0.18); cursor:pointer; transition:box-shadow 0.2s; }
+    .wp-btn:hover  { box-shadow:0 6px 24px rgba(0,0,0,0.25); }
+    .wp-btn.emergency { background:#ef4444; color:white; }
+
+    /* Current position chip */
+    .pos-chip { position:absolute; top:1rem; right:1rem; background:white; border-radius:0.75rem;
+                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:10; min-width:180px; }
+    .pos-chip .speed  { font-size:1.6rem; font-weight:900; color:#0b4a99; line-height:1; }
+    .pos-chip .label  { font-size:0.62rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; }
+
+    /* Segment chip */
+    .seg-chip { position:absolute; top:1rem; left:1rem; background:white; border-radius:0.75rem;
+                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:10; }
+    .seg-chip .seg-reg  { font-weight:800; font-size:0.9rem; color:#0b4a99; }
+    .seg-chip .seg-sub  { font-size:0.75rem; color:#64748b; }
+
+    .no-trip-state { text-align:center; padding:4rem 2rem; background:white; border-radius:1rem; border:1px solid #e2e8f0; }
+</style>
+{% endblock %}
+
+{% block driver_content %}
+{% if messages %}
+<div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;">
+    {% for msg in messages %}
+    <div class="toast show align-items-center text-white border-0 mb-2 rounded-3 shadow {% if msg.tags == 'success' %}bg-success{% else %}bg-danger{% endif %}" role="alert">
+        <div class="d-flex"><div class="toast-body fw-bold">{{ msg }}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">Route Analytics</h4>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">Live map view of your active trip.</p>
+    </div>
+</div>
+
+{% if not active_trip %}
+<div class="no-trip-state">
+    <i class="bi bi-map text-muted" style="font-size:3rem;"></i>
+    <h5 class="fw-bold mt-3 mb-2">No Active Trip</h5>
+    <p class="text-muted mb-0">Route analytics are available once your manager assigns you a trip.</p>
+</div>
+{% else %}
+<div class="row g-3">
+    <!-- ── Left: Map ─────────────────────────── -->
+    <div class="col-lg-8">
+        <div class="map-wrap shadow-sm">
+            <div id="gmap"></div>
+
+            <!-- Current Segment chip -->
+            <div class="seg-chip">
+                <div class="label mb-1">Current Segment</div>
+                <div class="d-flex align-items-center gap-2">
+                    <div style="background:#0b4a99;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;">
+                        <i class="bi bi-truck-front text-white"></i>
+                    </div>
+                    <div>
+                        <div class="seg-reg">{{ map_data.reg }}</div>
+                        <div class="seg-sub">Speed: {{ map_data.speed }} km/h (Active)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Position chip -->
+            <div class="pos-chip">
+                <div class="label">CURRENT POSITION</div>
+                <div style="font-size:0.78rem;color:#64748b;">Heading {{ map_data.heading }}</div>
+                <div class="speed">{{ map_data.speed }} <span style="font-size:0.9rem;font-weight:600;">km/h</span></div>
+            </div>
+
+            <!-- Waypoint FABs -->
+            <div class="waypoint-btns">
+                <button class="wp-btn" onclick="searchNearby('gas_station')" id="fuelBtn">
+                    <i class="bi bi-fuel-pump" style="color:#0b4a99;"></i> Nearby Fuel (Partners)
+                </button>
+                <button class="wp-btn" onclick="searchNearby('restaurant')" id="restBtn">
+                    <i class="bi bi-cup-hot" style="color:#f59e0b;"></i> Restrooms &amp; Restaurants
+                </button>
+                <button class="wp-btn emergency" onclick="searchNearby('hospital')" id="emergBtn">
+                    <i class="bi bi-plus-circle-fill"></i> Emergency Services
+                </button>
+                <button class="wp-btn" onclick="shareTracking()" id="shareBtn">
+                    <i class="bi bi-share" style="color:#0b4a99;"></i> Share Tracking Link
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Right: Sidebar ───────────────────── -->
+    <div class="col-lg-4">
+        <!-- Active Trip header -->
+        <div class="route-panel shadow-sm mb-3">
+            <div class="rp-section" style="background:linear-gradient(135deg,#0b4a99,#1e3a8a);color:white;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div style="font-size:0.62rem;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Active Trip</div>
+                        <div class="fw-bold mt-1" style="font-size:0.95rem;">
+                            {{ map_data.start }} → {{ map_data.end }}
+                        </div>
+                    </div>
+                    <i class="bi bi-exclamation-triangle text-warning"></i>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="rp-section">
+                <div class="rp-label mb-2">Trip Progress</div>
+                <div class="d-flex justify-content-between small fw-bold mb-1">
+                    <span>{{ map_data.start }}</span>
+                    <span>{{ map_data.end }}</span>
+                </div>
+                <div class="trip-bar">
+                    {% if map_data.total_km and map_data.total_km > 0 %}
+                    <div class="trip-bar-fill" style="width:{{ map_data.traveled_km|floatformat:0 }}px;max-width:100%;
+                         width:{% widthratio map_data.traveled_km map_data.total_km 100 %}%;"></div>
+                    {% else %}
+                    <div class="trip-bar-fill" style="width:0%;"></div>
+                    {% endif %}
+                </div>
+                <div class="d-flex justify-content-between mt-2">
+                    <div>
+                        <div class="rp-label">Remaining</div>
+                        <div class="rp-value">{{ map_data.remaining_km }} km</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="rp-label">ETA</div>
+                        <div class="rp-value rp-value-green">{{ map_data.eta_display }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Totals -->
+            <div class="rp-section">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <div class="rp-label">Total Distance</div>
+                        <div class="rp-value">{{ map_data.total_km|default:"—" }} km</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="rp-label">Total ETA</div>
+                        <div class="rp-value rp-value-green">{{ map_data.eta_display }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="route-panel shadow-sm">
+            <div class="rp-section d-flex align-items-center gap-3">
+                <div style="background:#eff6ff;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-speedometer2 text-primary"></i>
+                </div>
+                <div>
+                    <div class="rp-label">Current Speed</div>
+                    <div class="rp-value">{{ map_data.speed }} km/h</div>
+                </div>
+            </div>
+            <div class="rp-section d-flex align-items-center gap-3">
+                <div style="background:#f0fdf4;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-compass text-success"></i>
+                </div>
+                <div>
+                    <div class="rp-label">Heading</div>
+                    <div class="rp-value">{{ map_data.heading }}</div>
+                </div>
+            </div>
+            <div class="rp-section d-flex align-items-center gap-3">
+                <div style="background:#fef3c7;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;">
+                    <i class="bi bi-arrow-right-circle text-warning"></i>
+                </div>
+                <div>
+                    <div class="rp-label">Covered</div>
+                    <div class="rp-value">{{ map_data.traveled_km }} km</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if active_trip and maps_api_key %}
+<script>
+const MAP_DATA = {
+    lat: {{ map_data.lat }},
+    lng: {{ map_data.lng }},
+    reg: "{{ map_data.reg }}",
+    start: "{{ map_data.start }}",
+    end: "{{ map_data.end }}",
+};
+let map, placesService, currentMarkers = [];
+
+function initMap() {
+    const vehiclePos = { lat: MAP_DATA.lat, lng: MAP_DATA.lng };
+
+    map = new google.maps.Map(document.getElementById("gmap"), {
+        zoom: 9,
+        center: vehiclePos,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [
+            { featureType:"poi", elementType:"labels", stylers:[{visibility:"off"}] },
+            { featureType:"transit", stylers:[{visibility:"off"}] }
+        ]
+    });
+
+    placesService = new google.maps.places.PlacesService(map);
+
+    // Truck marker
+    const truckIcon = {
+        url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        scaledSize: new google.maps.Size(40, 40),
+    };
+    new google.maps.Marker({
+        position: vehiclePos,
+        map: map,
+        title: MAP_DATA.reg,
+        icon: truckIcon,
+        animation: google.maps.Animation.DROP,
+    });
+
+    // Draw route via Directions API
+    const dirService  = new google.maps.DirectionsService();
+    const dirRenderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: false,
+        polylineOptions: {
+            strokeColor: '#0b4a99',
+            strokeWeight: 4,
+            strokeOpacity: 0.8,
+        }
+    });
+    dirRenderer.setMap(map);
+
+    dirService.route({
+        origin: MAP_DATA.start,
+        destination: MAP_DATA.end,
+        travelMode: google.maps.TravelMode.DRIVING,
+    }, (result, status) => {
+        if (status === 'OK') dirRenderer.setDirections(result);
+    });
+}
+
+function searchNearby(type) {
+    currentMarkers.forEach(m => m.setMap(null));
+    currentMarkers = [];
+
+    const iconMap = {
+        'gas_station': '⛽',
+        'restaurant':  '🍽️',
+        'hospital':    '🏥',
+    };
+    placesService.nearbySearch({
+        location: { lat: MAP_DATA.lat, lng: MAP_DATA.lng },
+        radius: 10000,
+        type: type,
+    }, (results, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK) return;
+        results.slice(0, 6).forEach(place => {
+            const marker = new google.maps.Marker({
+                position: place.geometry.location,
+                map: map,
+                title: place.name,
+                label: { text: iconMap[type] || '📍', fontSize: '18px' },
+            });
+            const info = new google.maps.InfoWindow({
+                content: `<strong>${place.name}</strong><br>${place.vicinity}`
+            });
+            marker.addListener('click', () => info.open(map, marker));
+            currentMarkers.push(marker);
+        });
+    });
+}
+
+function shareTracking() {
+    const link = `${window.location.origin}/driver/route/`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Tracking link copied to clipboard!');
+    });
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&libraries=places&callback=initMap" async defer></script>
+{% endif %}
+
+<script>
+setTimeout(() => { document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')); }, 4000);
+</script>
+{% endblock %}

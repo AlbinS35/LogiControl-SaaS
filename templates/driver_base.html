@@ -159,27 +159,46 @@
     <!-- Sidebar -->
     <div class="driver-sidebar">
         <div class="sidebar-user-info">
-            <h6>{{ request.user.get_full_name|default:"Rajesh Kumar" }}</h6>
-            <span>{{ active_trip.vehicle.registration_number|default:"MH-12-PQ-9901" }}</span>
+            <h6>{{ request.user.get_full_name|default:request.user.username }}</h6>
+            {% if active_trip and active_trip.vehicle %}
+            <span class="d-flex align-items-center gap-1">
+                <i class="bi bi-truck-front-fill" style="color:#0b4a99;font-size:0.75rem;"></i>
+                {{ active_trip.vehicle.registration_number }}
+            </span>
+            {% else %}
+            <span class="text-muted fst-italic" style="font-size:0.75rem;">No vehicle assigned</span>
+            {% endif %}
         </div>
         
         <nav class="nav-menu">
             <a href="{% url 'driver_dashboard' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_dashboard' %}active{% endif %}">
                 <i class="bi bi-pencil-square"></i> Status
             </a>
-            <a href="#" class="nav-link-custom">
+            {% if active_trip %}
+            <a href="{% url 'driver_fuel_registry' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_fuel_registry' %}active{% endif %}">
                 <i class="bi bi-fuel-pump"></i> Fuel Registry
             </a>
-            <a href="#" class="nav-link-custom">
+            <a href="{% url 'driver_vehicle_health' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_vehicle_health' %}active{% endif %}">
                 <i class="bi bi-heart-pulse"></i> Vehicle Health
             </a>
-            <a href="#" class="nav-link-custom">
+            <a href="{% url 'driver_route_analytics' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_route_analytics' %}active{% endif %}">
                 <i class="bi bi-bezier2"></i> Route Analytics
             </a>
-            <a href="#" class="nav-link-custom">
+            {% else %}
+            <a href="#" class="nav-link-custom disabled" style="opacity:0.45;cursor:not-allowed;pointer-events:none;" title="Available when a trip is assigned">
+                <i class="bi bi-fuel-pump"></i> Fuel Registry
+            </a>
+            <a href="#" class="nav-link-custom disabled" style="opacity:0.45;cursor:not-allowed;pointer-events:none;" title="Available when a trip is assigned">
+                <i class="bi bi-heart-pulse"></i> Vehicle Health
+            </a>
+            <a href="#" class="nav-link-custom disabled" style="opacity:0.45;cursor:not-allowed;pointer-events:none;" title="Available when a trip is assigned">
+                <i class="bi bi-bezier2"></i> Route Analytics
+            </a>
+            {% endif %}
+            <a href="{% url 'driver_revenue' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_revenue' %}active{% endif %}">
                 <i class="bi bi-cash-stack"></i> Revenue
             </a>
-            <a href="{% url 'fleet_settings' %}" class="nav-link-custom">
+            <a href="{% url 'driver_settings' %}" class="nav-link-custom {% if request.resolver_match.url_name == 'driver_settings' %}active{% endif %}">
                 <i class="bi bi-gear"></i> Settings
             </a>
         </nav>
@@ -204,8 +223,8 @@
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <a href="#" class="text-muted fs-5"><i class="bi bi-bell"></i></a>
-                <a href="{% url 'fleet_settings' %}" class="text-muted fs-5"><i class="bi bi-person-circle"></i></a>
+                <a href="#" class="text-muted fs-5" title="Notifications"><i class="bi bi-bell"></i></a>
+                <a href="{% url 'driver_settings' %}" class="text-muted fs-5" title="My Profile"><i class="bi bi-person-circle"></i></a>
             </div>
         </nav>
 

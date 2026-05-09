@@ -57,6 +57,7 @@ class TripCreateForm(forms.ModelForm):
             'driver', 'vehicle',
             'start_location', 'end_location',
             'goods_type', 'goods_name',
+            'total_distance_km',
             'scheduled_departure', 'scheduled_arrival',
         ]
         widgets = {
@@ -64,6 +65,11 @@ class TripCreateForm(forms.ModelForm):
             'end_location': forms.TextInput(attrs={'class': 'form-control'}),
             'goods_type': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Perishable, Electronics'}),
             'goods_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. General Goods'}),
+            'total_distance_km': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g. 1240',
+                'min': '1',
+            }),
             'scheduled_departure': forms.DateTimeInput(
                 attrs={'type': 'datetime-local', 'class': 'form-control'}
             ),
@@ -97,7 +103,7 @@ class VehicleForm(forms.ModelForm):
     class Meta:
         model = Vehicle
         fields = [
-            'registration_number', 'make', 'model', 'year', 'status',
+            'registration_number', 'vehicle_type', 'loading_capacity', 'make', 'model', 'year', 'status',
             'rc_document', 'rc_expiry',
             'insurance_policy', 'insurance_expiry',
             'puc_certificate', 'puc_expiry',
@@ -105,6 +111,8 @@ class VehicleForm(forms.ModelForm):
         ]
         widgets = {
             'registration_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'vehicle_type': forms.Select(attrs={'class': 'form-select'}),
+            'loading_capacity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1'}),
             'make': forms.TextInput(attrs={'class': 'form-control'}),
             'model': forms.TextInput(attrs={'class': 'form-control'}),
             'year': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -128,6 +136,8 @@ class DriverForm(forms.ModelForm):
             'first_name', 'last_name', 'email',
             'date_of_birth', 'driving_license',
             'experience_years', 'phone_number',
+            'license_type', 'hazmat_certified', 'aadhaar_number', 'badge_number',
+            'dl_expiry', 'medical_certificate', 'dl_front', 'dl_back', 'police_verification'
         ]
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -136,7 +146,28 @@ class DriverForm(forms.ModelForm):
             'driving_license': forms.TextInput(attrs={'class': 'form-control'}),
             'experience_years': forms.NumberInput(attrs={'class': 'form-control'}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'license_type': forms.Select(attrs={'class': 'form-select'}),
+            'hazmat_certified': forms.CheckboxInput(attrs={'class': 'form-check-input', 'role': 'switch'}),
+            'aadhaar_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'badge_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'dl_expiry': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+
+    def clean_driving_license(self):
+        dl = self.cleaned_data.get('driving_license')
+        if dl:
+            dl_clean = dl.replace(' ', '').replace('-', '')
+            if len(dl_clean) < 10:
+                raise ValidationError("Invalid Driving License format. Must be at least 10 characters.")
+        return dl
+
+    def clean(self):
+        cleaned_data = super().clean()
+        license_type = cleaned_data.get('license_type')
+        experience = cleaned_data.get('experience_years')
+        if license_type == 'Trailer' and (experience is None or experience < 5):
+            raise ValidationError("Trailer drivers must have at least 5 years of experience.")
+        return cleaned_data
 
 
 # ─────────────────────────────────────────────

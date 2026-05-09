@@ -1,0 +1,509 @@
+{% extends 'driver_base.html' %}
+{% load static %}
+
+{% block title %}Fuel Registry – LogiControl India{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Metric Cards ─────────────────────────────────── */
+    .fuel-metric-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.75rem 2rem;
+    }
+    .fuel-card-blue {
+        background: linear-gradient(135deg, #0b4a99 0%, #1e3a8a 100%);
+        color: white;
+        border-radius: 1rem;
+        padding: 1.75rem 2rem;
+    }
+    .fuel-level-bar-wrap {
+        background: #e2e8f0;
+        border-radius: 50px;
+        height: 10px;
+        margin: 1rem 0;
+        overflow: hidden;
+    }
+    .fuel-level-bar-fill {
+        height: 100%;
+        border-radius: 50px;
+        background: linear-gradient(90deg, #0b4a99, #3b82f6);
+        transition: width 0.8s ease;
+    }
+    .metric-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.2rem;
+    }
+    .metric-value {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: #1e293b;
+    }
+    /* ── Table Panel ──────────────────────────────────── */
+    .table-panel {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .table-panel .table th {
+        background: #f8fafc;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0.85rem 1rem;
+    }
+    .table-panel .table td {
+        padding: 1rem;
+        vertical-align: middle;
+        font-size: 0.88rem;
+        color: #1e293b;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .station-icon {
+        width: 36px; height: 36px;
+        background: #eff6ff;
+        color: #0b4a99;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    /* Status badges */
+    .badge-approved { background:#dcfce7; color:#166534; }
+    .badge-pending  { background:#fff7ed; color:#9a3412; }
+    .badge-rejected { background:#fee2e2; color:#991b1b; }
+    .status-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.35rem 0.85rem;
+        border-radius: 50px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    /* ── Log Modal ────────────────────────────────────── */
+    .receipt-preview {
+        width: 100%;
+        height: 160px;
+        border: 2px dashed #e2e8f0;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background: #f8fafc;
+        transition: border-color 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .receipt-preview:hover { border-color: #0b4a99; }
+    .receipt-preview img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        object-fit: cover; border-radius: 8px;
+        display: none;
+    }
+    /* ── Banner ───────────────────────────────────────── */
+    .fuel-banner {
+        border-radius: 1rem;
+        overflow: hidden;
+        position: relative;
+        height: 180px;
+        background: linear-gradient(135deg, #0b4a99 0%, #1e3a8a 100%);
+        display: flex;
+        align-items: center;
+        padding: 2rem;
+    }
+    .fuel-banner-text { z-index: 2; max-width: 350px; }
+    .fuel-banner-img {
+        position: absolute; right: 0; top: 0;
+        height: 100%; width: 50%;
+        object-fit: cover; opacity: 0.25;
+    }
+    /* ── No Trip State ──────────────────────────────── */
+    .no-trip-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block driver_content %}
+<!-- Toasts -->
+{% if messages %}
+<div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;">
+    {% for msg in messages %}
+    <div class="toast show align-items-center text-white border-0 mb-2 rounded-3 shadow {% if msg.tags == 'success' %}bg-success{% else %}bg-danger{% endif %}" role="alert">
+        <div class="d-flex">
+            <div class="toast-body fw-bold">{{ msg }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">Fuel Registry</h4>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">Monitor consumption and log trip expenses in real-time.</p>
+    </div>
+    {% if active_trip %}
+    <button class="btn fw-bold px-4 py-2 shadow-sm" style="background:#0b4a99;color:white;border:none;border-radius:8px;"
+            data-bs-toggle="modal" data-bs-target="#logFuelModal">
+        <i class="bi bi-camera me-2"></i>+ Log New Fuel Purchase
+    </button>
+    {% endif %}
+</div>
+
+{% if not active_trip %}
+<!-- No active trip -->
+<div class="no-trip-state">
+    <i class="bi bi-fuel-pump text-muted" style="font-size:3rem;"></i>
+    <h5 class="fw-bold mt-3 mb-2">No Active Trip</h5>
+    <p class="text-muted mb-0">Fuel logging is available only when you have an active trip assigned by your manager.</p>
+</div>
+
+{% else %}
+<!-- ── ANALYTICS ROW ─────────────────────────────────── -->
+<div class="row g-3 mb-3">
+    <!-- Fuel Level Card -->
+    <div class="col-lg-7">
+        <div class="fuel-metric-card h-100 shadow-sm">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="metric-label">Estimated Fuel Level</div>
+                    <div style="font-size:2.5rem;font-weight:800;color:#0b4a99;line-height:1.1;">
+                        {{ analytics.estimated_fuel_pct }}%
+                    </div>
+                    <div class="text-muted small mt-1">~ {{ analytics.remaining_liters }} Liters Remaining</div>
+                </div>
+                <div style="background:#eff6ff;border-radius:12px;padding:1rem;">
+                    <i class="bi bi-fuel-pump-fill" style="font-size:2rem;color:#0b4a99;"></i>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="fuel-level-bar-wrap mt-3">
+                <div class="fuel-level-bar-fill" id="fuelBar" style="width: {{ analytics.estimated_fuel_pct }}%;"></div>
+            </div>
+
+            <!-- Sub-metrics -->
+            <div class="d-flex gap-4 mt-3">
+                <div>
+                    <div class="metric-label">Average Burn</div>
+                    <div class="metric-value">
+                        {% if analytics.avg_burn %}{{ analytics.avg_burn }} L/100km{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="metric-label">Remaining Range</div>
+                    <div class="metric-value">
+                        {% if analytics.remaining_range %}{{ analytics.remaining_range }} km{% else %}—{% endif %}
+                    </div>
+                </div>
+                {% if analytics.avg_burn and analytics.avg_burn < 35 %}
+                <div class="ms-auto d-flex align-items-center">
+                    <span class="badge text-success" style="background:#dcfce7;font-size:0.75rem;padding:0.4rem 0.8rem;border-radius:50px;">
+                        <i class="bi bi-graph-down-arrow me-1"></i> Optimal Efficiency
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Trip Spending Card -->
+    <div class="col-lg-5">
+        <div class="fuel-card-blue h-100 shadow-sm">
+            <div class="metric-label" style="color:rgba(255,255,255,0.6);">Trip Spending (Approved)</div>
+            <div style="font-size:2.2rem;font-weight:800;margin:0.5rem 0;">
+                ₹{{ analytics.trip_spending|floatformat:2 }}
+            </div>
+
+            <div class="d-flex gap-4 mt-2" style="border-top:1px solid rgba(255,255,255,0.15);padding-top:1rem;">
+                <div>
+                    <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Last Refill</div>
+                    <div style="font-weight:700;font-size:0.9rem;">
+                        {% if analytics.last_entry %}{{ analytics.last_entry.timestamp|timesince }} ago{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Avg Price</div>
+                    <div style="font-weight:700;font-size:0.9rem;">
+                        {% if analytics.avg_price_per_liter %}₹{{ analytics.avg_price_per_liter }}/L{% else %}—{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div style="font-size:0.65rem;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;">Total Logged</div>
+                    <div style="font-weight:700;font-size:0.9rem;">{{ analytics.total_volume }} L</div>
+                </div>
+            </div>
+
+            <button onclick="downloadSummary()" class="btn mt-3 w-100 fw-bold"
+                    style="background:white;color:#0b4a99;border:none;border-radius:8px;padding:0.6rem;">
+                <i class="bi bi-download me-2"></i>Download Summary
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── RECENT FUEL ENTRIES TABLE ──────────────────────── -->
+<div class="table-panel shadow-sm mb-4">
+    <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <h6 class="fw-bold mb-0">Recent Fuel Entries</h6>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Search -->
+            <form method="GET" class="d-flex align-items-center gap-2">
+                <div class="input-group input-group-sm" style="width:220px;">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Search station…"
+                           value="{{ search_q }}" style="background:#f8fafc;">
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary px-3" style="background:#0b4a99;border:none;">Search</button>
+                {% if search_q %}<a href="{% url 'driver_fuel_registry' %}" class="btn btn-sm btn-outline-secondary px-2">✕</a>{% endif %}
+            </form>
+        </div>
+    </div>
+
+    <table class="table m-0">
+        <thead>
+            <tr>
+                <th>Date &amp; Time</th>
+                <th>Station</th>
+                <th>Volume</th>
+                <th>Total Cost</th>
+                <th>Odometer</th>
+                <th>Status</th>
+                <th>Receipt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in fuel_entries %}
+            <tr>
+                <td>
+                    <div class="fw-bold">{{ entry.timestamp|date:"M d, Y" }}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">{{ entry.timestamp|date:"h:i A" }}</div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="station-icon"><i class="bi bi-fuel-pump"></i></div>
+                        <div>
+                            <div class="fw-bold">{{ entry.station_name }}</div>
+                            {% if entry.notes %}<div class="text-muted" style="font-size:0.75rem;">{{ entry.notes|truncatechars:30 }}</div>{% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td class="fw-bold">{{ entry.volume_liters }} L</td>
+                <td class="fw-bold" style="color:#0b4a99;">₹{{ entry.total_cost }}</td>
+                <td class="text-muted">{{ entry.odometer_at_fill }} km</td>
+                <td>
+                    {% if entry.status == 'APPROVED' %}
+                    <span class="status-badge badge-approved">Approved</span>
+                    {% elif entry.status == 'REJECTED' %}
+                    <span class="status-badge badge-rejected">Rejected</span>
+                    {% else %}
+                    <span class="status-badge badge-pending">Pending</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entry.receipt_image %}
+                    <a href="{{ entry.receipt_image.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-2 py-1" style="font-size:0.75rem;">
+                        <i class="bi bi-image me-1"></i>View
+                    </a>
+                    {% else %}
+                    <span class="text-muted" style="font-size:0.75rem;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-5 text-muted">
+                    <i class="bi bi-fuel-pump d-block mb-2" style="font-size:2rem;"></i>
+                    No fuel entries yet. Click "+ Log New Fuel Purchase" to add your first entry.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if fuel_entries %}
+    <div class="text-center p-3 border-top">
+        <span class="text-muted small">Showing {{ fuel_entries|length }} entr{{ fuel_entries|length|pluralize:"y,ies" }} for Trip #{{ active_trip.id }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ── PRECISION BANNER ────────────────────────────────── -->
+<div class="fuel-banner shadow-sm">
+    <div class="fuel-banner-text">
+        <h5 class="fw-bold text-white mb-2">Precision Analytics for Sustainable Fleet Management</h5>
+        <p style="color:rgba(255,255,255,0.7);font-size:0.85rem;margin:0;">
+            Every liter logged helps optimize routes and reduce carbon footprint across the entire supply chain.
+        </p>
+    </div>
+    <img src="https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=60"
+         alt="Fleet truck" class="fuel-banner-img">
+</div>
+{% endif %}
+
+
+<!-- ═══════════════════════════════════════════════════
+     LOG FUEL PURCHASE MODAL
+══════════════════════════════════════════════════════ -->
+{% if active_trip %}
+<div class="modal fade" id="logFuelModal" tabindex="-1" aria-labelledby="logFuelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form method="POST" enctype="multipart/form-data" id="fuelForm">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <div>
+                        <h5 class="fw-bold mb-1" id="logFuelModalLabel">Log New Fuel Purchase</h5>
+                        <p class="text-muted small mb-0">
+                            Trip: {{ active_trip.start_location }} → {{ active_trip.end_location }} &nbsp;|&nbsp;
+                            Vehicle: {{ active_trip.vehicle.registration_number }}
+                        </p>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body px-4 py-3">
+                    <div class="row g-3">
+                        <!-- Station Name -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Station Name *</label>
+                            <input type="text" name="station_name" class="form-control" placeholder="e.g. HP Petrol Pump, NH-48 Surat" required>
+                        </div>
+                        <!-- Volume -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Volume (Litres) *</label>
+                            <input type="number" name="volume_liters" id="volumeInput" class="form-control" step="0.01" min="0" placeholder="e.g. 80.50" required oninput="calcTotal()">
+                        </div>
+                        <!-- Cost per litre -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Price/Litre (₹)</label>
+                            <input type="number" id="pricePerLitre" class="form-control" step="0.01" min="0" placeholder="e.g. 96.72" oninput="calcTotal()">
+                        </div>
+                        <!-- Total cost -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Total Cost (₹) *</label>
+                            <input type="number" name="total_cost" id="totalCostInput" class="form-control" step="0.01" min="0" placeholder="e.g. 7,793.16" required>
+                        </div>
+                        <!-- Odometer -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Current Odometer (km) *</label>
+                            <input type="number" name="odometer_at_fill" class="form-control"
+                                   value="{{ active_trip.vehicle.current_odometer }}" min="{{ active_trip.vehicle.current_odometer }}" required>
+                        </div>
+                        <!-- Notes -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Notes (optional)</label>
+                            <input type="text" name="notes" class="form-control" placeholder="e.g. Driver topped up before highway">
+                        </div>
+                        <!-- Receipt Upload -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Receipt Image</label>
+                            <div class="receipt-preview" id="receiptPreview" onclick="document.getElementById('receiptInput').click()">
+                                <img id="receiptPreviewImg" src="" alt="preview">
+                                <div id="receiptPlaceholder" class="text-center">
+                                    <i class="bi bi-camera text-muted" style="font-size:2rem;display:block;margin-bottom:0.5rem;"></i>
+                                    <div class="text-muted small fw-bold">Click to upload receipt photo</div>
+                                    <div class="text-muted" style="font-size:0.75rem;">JPG, PNG supported</div>
+                                </div>
+                            </div>
+                            <input type="file" id="receiptInput" name="receipt_image" accept="image/*" style="display:none;" onchange="previewReceipt(this)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 px-4 pb-4 pt-2">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn fw-bold px-4 rounded-3" style="background:#0b4a99;color:white;border:none;">
+                        <i class="bi bi-check-circle me-1"></i> Submit for Approval
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    /* ── Auto-dismiss toasts ─── */
+    setTimeout(() => { document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')); }, 4000);
+
+    /* ── Calculate total cost ─── */
+    function calcTotal() {
+        const vol   = parseFloat(document.getElementById('volumeInput')?.value || 0);
+        const price = parseFloat(document.getElementById('pricePerLitre')?.value || 0);
+        if (vol > 0 && price > 0) {
+            document.getElementById('totalCostInput').value = (vol * price).toFixed(2);
+        }
+    }
+
+    /* ── Receipt image preview ─── */
+    function previewReceipt(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.getElementById('receiptPreviewImg');
+                const placeholder = document.getElementById('receiptPlaceholder');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                placeholder.style.display = 'none';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    /* ── Download Summary PDF ─── */
+    function downloadSummary() {
+        const rows = document.querySelectorAll('.table tbody tr');
+        let text = "LogiControl India – Fuel Summary\n";
+        text += "=".repeat(50) + "\n";
+        text += `Trip: {{ active_trip.start_location|default:'—' }} → {{ active_trip.end_location|default:'—' }}\n`;
+        text += `Vehicle: {{ active_trip.vehicle.registration_number|default:'—' }}\n`;
+        text += `Total Approved Spending: ₹{{ analytics.trip_spending|floatformat:2|default:'0.00' }}\n`;
+        text += `Total Volume: {{ analytics.total_volume|default:'0' }} L\n`;
+        text += `Avg Burn: {{ analytics.avg_burn|default:'—' }} L/100km\n`;
+        text += "-".repeat(50) + "\n";
+        text += "Date".padEnd(15) + "Station".padEnd(25) + "Volume".padEnd(10) + "Cost".padEnd(12) + "Status\n";
+        text += "-".repeat(50) + "\n";
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            if (cells.length > 1) {
+                const date    = cells[0]?.innerText.trim().replace(/\n/g, ' ');
+                const station = cells[1]?.querySelector('.fw-bold')?.innerText?.trim() || '—';
+                const volume  = cells[2]?.innerText.trim();
+                const cost    = cells[3]?.innerText.trim();
+                const status  = cells[5]?.innerText.trim();
+                text += `${date.substring(0,14).padEnd(15)}${station.substring(0,24).padEnd(25)}${volume.padEnd(10)}${cost.padEnd(12)}${status}\n`;
+            }
+        });
+
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `fuel_summary_trip_{{ active_trip.id|default:'0' }}.txt`;
+        a.click();
+    }
+</script>
+{% endblock %}

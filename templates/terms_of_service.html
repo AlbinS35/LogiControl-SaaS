@@ -1,0 +1,710 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogiControl – Dominate the National Highway Network</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: #1e293b;
+      overflow-x: hidden
+    }
+
+    a {
+      text-decoration: none
+    }
+
+    /* NAVBAR */
+    .navbar {
+      background: #0a0f1e;
+      padding: 0 5%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 62px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(255, 255, 255, .06)
+    }
+
+    .nav-brand {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -.3px
+    }
+
+    .nav-brand span {
+      color: #22c55e
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem
+    }
+
+    .nav-links a {
+      color: #94a3b8;
+      font-size: .85rem;
+      font-weight: 500;
+      transition: color .2s
+    }
+
+    .nav-links a:hover {
+      color: #fff
+    }
+
+    .btn-signin {
+      background: transparent;
+      border: 1.5px solid #2563eb;
+      color: #60a5fa;
+      padding: .45rem 1.2rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .btn-signin:hover {
+      background: #2563eb;
+      color: #fff
+    }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      min-height: 88vh;
+      display: flex;
+      align-items: center;
+      background: #060c1a;
+      overflow: hidden
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1920&q=90') center/cover no-repeat;
+      opacity: .45;
+      transform: scale(1.03);
+      transition: transform 8s ease
+    }
+
+    .hero-bg:hover {
+      transform: scale(1)
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, rgba(6, 12, 26, .92) 0%, rgba(6, 12, 26, .75) 45%, rgba(6, 12, 26, .35) 100%)
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      padding: 0 8%;
+      max-width: 680px
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(249, 115, 22, .15);
+      border: 1px solid rgba(249, 115, 22, .4);
+      color: #fb923c;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: .4rem .9rem;
+      border-radius: 100px;
+      margin-bottom: 1.8rem
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 4rem);
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 1.2rem
+    }
+
+    .hero h1 span {
+      color: #f97316
+    }
+
+    .hero-sub {
+      color: #94a3b8;
+      font-size: 1rem;
+      line-height: 1.7;
+      max-width: 520px;
+      margin-bottom: 2rem
+    }
+
+    .btn-hero {
+      background: #2563eb;
+      color: #fff;
+      padding: .85rem 2rem;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: .95rem;
+      border: none;
+      cursor: pointer;
+      transition: all .25s;
+      display: inline-block
+    }
+
+    .btn-hero:hover {
+      background: #1d4ed8;
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(37, 99, 235, .4);
+      color: #fff
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 3rem;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, .08)
+    }
+
+    .stat-item .num {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: #fff
+    }
+
+    .stat-item .label {
+      font-size: .7rem;
+      font-weight: 600;
+      color: #64748b;
+      letter-spacing: 1px;
+      margin-top: .2rem
+    }
+
+    /* SECURE PORTAL */
+    .portal-section {
+      background: #fff;
+      padding: 6rem 5%;
+      text-align: center
+    }
+
+    .section-title {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: .7rem
+    }
+
+    .section-sub {
+      color: #64748b;
+      font-size: .95rem;
+      max-width: 500px;
+      margin: 0 auto 3rem
+    }
+
+    .portal-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 2.5rem;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, .06)
+    }
+
+    .portal-icon {
+      width: 56px;
+      height: 56px;
+      background: #eff6ff;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.2rem;
+      font-size: 1.5rem;
+      color: #2563eb
+    }
+
+    .portal-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: .5rem
+    }
+
+    .portal-card p {
+      color: #64748b;
+      font-size: .85rem;
+      margin-bottom: 1.5rem
+    }
+
+    .portal-checks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+      margin-bottom: 1.8rem;
+      text-align: left
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .82rem;
+      color: #334155
+    }
+
+    .check-item i {
+      color: #22c55e;
+      font-size: .9rem
+    }
+
+    .btn-portal {
+      background: #2563eb;
+      color: #fff;
+      padding: .75rem 2rem;
+      border-radius: 9px;
+      font-weight: 700;
+      font-size: .9rem;
+      width: 100%;
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+      display: block
+    }
+
+    .btn-portal:hover {
+      background: #1d4ed8;
+      color: #fff
+    }
+
+    /* INTELLIGENCE */
+    .intel-section {
+      background: #060d1f;
+      padding: 6rem 8%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center
+    }
+
+    .intel-left h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: .9rem
+    }
+
+    .intel-left h2 span {
+      color: #22c55e
+    }
+
+    .intel-left p {
+      color: #64748b;
+      font-size: .92rem;
+      line-height: 1.7;
+      margin-bottom: 2rem
+    }
+
+    .intel-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem
+    }
+
+    .intel-card {
+      background: rgba(255, 255, 255, .04);
+      border: 1px solid rgba(255, 255, 255, .08);
+      border-radius: 12px;
+      padding: 1.2rem 1.5rem
+    }
+
+    .intel-card-title {
+      font-size: .85rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: .4rem
+    }
+
+    .intel-card-desc {
+      font-size: .78rem;
+      color: #64748b;
+      line-height: 1.6
+    }
+
+    .intel-right {
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .neural-circle {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      border: 1px solid rgba(37, 99, 235, .3);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .neural-circle::before {
+      content: '';
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      border: 1px solid rgba(37, 99, 235, .2)
+    }
+
+    .neural-circle::after {
+      content: '';
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(37, 99, 235, .08);
+      border: 1px solid rgba(37, 99, 235, .3)
+    }
+
+    .neural-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      animation: pulse 2s infinite
+    }
+
+    .dot1 {
+      background: #2563eb;
+      top: 10%;
+      left: 50%;
+      animation-delay: 0s
+    }
+
+    .dot2 {
+      background: #22c55e;
+      bottom: 15%;
+      right: 20%;
+      animation-delay: .7s
+    }
+
+    .dot3 {
+      background: #f97316;
+      top: 40%;
+      left: 5%;
+      animation-delay: 1.4s
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1
+      }
+
+      50% {
+        transform: scale(1.5);
+        opacity: .5
+      }
+    }
+
+    /* FEATURES */
+    .features-section {
+      background: #f8fafc;
+      padding: 6rem 8%
+    }
+
+    .features-section .section-title {
+      text-align: center
+    }
+
+    .features-section .section-sub {
+      text-align: center
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 3rem
+    }
+
+    .feature-card {
+      background: #fff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 2rem
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      margin-bottom: 1.2rem
+    }
+
+    .fi-blue {
+      background: #eff6ff;
+      color: #2563eb
+    }
+
+    .fi-red {
+      background: #fff1f2;
+      color: #e11d48
+    }
+
+    .fi-green {
+      background: #f0fdf4;
+      color: #16a34a
+    }
+
+    .feature-card h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .5rem
+    }
+
+    .feature-card p {
+      font-size: .83rem;
+      color: #64748b;
+      line-height: 1.6;
+      margin-bottom: 1rem
+    }
+
+    .feature-link {
+      font-size: .82rem;
+      font-weight: 600;
+      color: #2563eb
+    }
+
+    .feature-link:hover {
+      color: #1d4ed8
+    }
+
+    /* TRUSTED BY */
+    .trusted-section {
+      background: #fff;
+      padding: 3rem 5%;
+      border-top: 1px solid #f1f5f9;
+      border-bottom: 1px solid #f1f5f9
+    }
+
+    .trusted-label {
+      text-align: center;
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #94a3b8;
+      margin-bottom: 2rem
+    }
+
+    .logos-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 3.5rem;
+      flex-wrap: wrap
+    }
+
+    .logo-item {
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #cbd5e1
+    }
+
+    /* CTA */
+    .cta-section {
+      background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+      padding: 6rem 5%;
+      text-align: center
+    }
+
+    .cta-section h2 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: .8rem
+    }
+
+    .cta-section p {
+      color: rgba(255, 255, 255, .7);
+      font-size: 1rem;
+      margin-bottom: 2.5rem
+    }
+
+    .btn-cta {
+      background: #fff;
+      color: #1d4ed8;
+      padding: .85rem 2.5rem;
+      border-radius: 10px;
+      font-weight: 800;
+      font-size: 1rem;
+      border: none;
+      cursor: pointer;
+      transition: all .2s;
+      display: inline-block
+    }
+
+    .btn-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .2);
+      color: #1d4ed8
+    }
+
+    /* FOOTER */
+    footer {
+      background: #060d1f;
+      padding: 4rem 8% 2rem;
+      color: #94a3b8
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem
+    }
+
+    .footer-brand {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: .7rem
+    }
+
+    .footer-brand span {
+      color: #22c55e
+    }
+
+    .footer-tagline {
+      font-size: .82rem;
+      line-height: 1.6;
+      color: #64748b
+    }
+
+    .footer-col h6 {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: #475569;
+      margin-bottom: 1rem;
+      text-transform: uppercase
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: .83rem;
+      color: #64748b;
+      margin-bottom: .6rem;
+      transition: color .2s
+    }
+
+    .footer-col a:hover {
+      color: #e2e8f0
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, .06);
+      padding-top: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem
+    }
+
+    .footer-bottom p {
+      font-size: .78rem;
+      color: #475569
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="nav-brand">Logi<span>Control</span></div>
+    <div class="nav-links">
+      <a href="{% url 'home' %}">Home</a>
+      <a href="{% url 'pricing' %}">Pricing</a>
+      <a href="{% url 'resources' %}">Resources</a>
+    </div>
+    <a href="{% url 'login' %}" class="btn-signin">Sign In</a>
+  </nav>
+
+
+  <section class="portal-section" style="min-height: 60vh;">
+    <h2 class="section-title">Terms of Service</h2>
+    <p class="section-sub">Read the terms and conditions for using LogiControl.</p>
+    <div class="portal-card" style="max-width: 800px; text-align: left;">
+      <div class="portal-icon"><i class="bi bi-file-earmark-text"></i></div>
+      <h3>Terms of Service</h3>
+      <p style="margin-top: 1.5rem; color: #334155; line-height: 1.8;">
+        This page is under construction. Please check back later for full details regarding our terms of service.
+      </p>
+    </div>
+  </section>
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">Logi<span>Control</span></div>
+        <p class="footer-tagline">Enterprise-grade roadway logistics. Management for the Indian and freedom in motion.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h6>Product</h6>
+        <a href="{% url 'login' %}">Fleet Registry</a>
+        <a href="{% url 'login' %}">Route Analytics</a>
+        <a href="{% url 'login' %}">Revenue Tracking</a>
+      </div>
+      <div class="footer-col">
+        <h6>Company</h6>
+        <a href="#">About Us</a>
+        <a href="#">Partners</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-col">
+        <h6>Legal</h6>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>@2026 LogiControl Technologies Pvt Ltd. All rights reserved.</p>
+      <div style="display:flex;gap:1rem">
+        <a href="#" style="color:#475569;font-size:1.1rem"><i class="bi bi-twitter-x"></i></a>
+        <a href="#" style="color:#475569;font-size:1.1rem"><i class="bi bi-linkedin"></i></a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>

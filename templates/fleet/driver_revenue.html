@@ -1,0 +1,328 @@
+{% extends 'driver_base.html' %}
+
+{% block title %}Revenue & Earnings – LogiControl India{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ── Metric Tiles ───────────────────────────────────── */
+    .earnings-tile {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.25rem 1.5rem;
+        flex: 1;
+    }
+    .earnings-tile .tile-label {
+        font-size: 0.65rem; font-weight: 700;
+        color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;
+        margin-bottom: 0.4rem;
+    }
+    .earnings-tile .tile-value {
+        font-size: 1.75rem; font-weight: 800; color: #1e293b; line-height: 1;
+    }
+    .tile-highlight {
+        background: linear-gradient(135deg, #0b4a99 0%, #1e3a8a 100%) !important;
+        border: none !important;
+    }
+    .tile-highlight .tile-label { color: rgba(255,255,255,0.65); }
+    .tile-highlight .tile-value { color: white; }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .rev-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        padding: 1.75rem;
+    }
+    .rev-card h6 {
+        font-size: 0.8rem; font-weight: 700;
+        color: #1e293b; margin-bottom: 1.25rem;
+    }
+
+    /* ── Score bars ─────────────────────────────────────── */
+    .score-row { margin-bottom: 1.1rem; }
+    .score-row .score-label {
+        font-size: 0.78rem; font-weight: 700; color: #1e293b;
+        display: flex; justify-content: space-between; margin-bottom: 0.4rem;
+    }
+    .score-bar { height: 8px; background: #f1f5f9; border-radius: 50px; overflow: hidden; }
+    .score-fill { height: 100%; border-radius: 50px; transition: width 1s ease; }
+    .fill-green  { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .fill-blue   { background: linear-gradient(90deg, #3b82f6, #0b4a99); }
+    .fill-orange { background: linear-gradient(90deg, #f97316, #ea580c); }
+
+    /* ── Peer status box ─────────────────────────────────── */
+    .peer-box {
+        background: #f0fdf4; border-radius: 0.75rem;
+        padding: 1rem 1.25rem; border-left: 4px solid #22c55e;
+        font-size: 0.85rem; color: #166534; font-style: italic; margin-top: 1.25rem;
+    }
+
+    /* ── Payout table ───────────────────────────────────── */
+    .payout-table th {
+        font-size: 0.68rem; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        background: #f8fafc; padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .payout-table td {
+        font-size: 0.87rem; color: #1e293b;
+        padding: 0.9rem 1rem; border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .badge-settled    { background:#dcfce7; color:#166534; }
+    .badge-processing { background:#fff7ed; color:#9a3412; }
+    .payout-badge {
+        font-size: 0.7rem; font-weight: 700; padding: 0.3rem 0.85rem;
+        border-radius: 50px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .trend-up   { color: #16a34a; font-size: 0.78rem; font-weight: 700; }
+    .trend-down { color: #dc2626; font-size: 0.78rem; font-weight: 700; }
+    .trend-flat { color: #64748b; font-size: 0.78rem; font-weight: 700; }
+</style>
+{% endblock %}
+
+{% block driver_content %}
+<!-- Toasts -->
+{% if messages %}
+<div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;">
+    {% for msg in messages %}
+    <div class="toast show align-items-center text-white border-0 mb-2 rounded-3 shadow
+        {% if msg.tags == 'success' %}bg-success{% else %}bg-danger{% endif %}" role="alert">
+        <div class="d-flex">
+            <div class="toast-body fw-bold">{{ msg }}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Page Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">Revenue & Earnings</h4>
+        <p class="text-muted mb-0" style="font-size:0.85rem;">Precision tracking for your financial performance.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <span class="badge d-flex align-items-center gap-1 px-3 py-2"
+              style="background:#f0fdf4;color:#166534;border-radius:50px;font-size:0.78rem;font-weight:700;border:1px solid #bbf7d0;">
+            <i class="bi bi-calendar3"></i> {{ current_month }}
+        </span>
+        <a href="?download=pdf" class="btn fw-bold px-3 py-2 shadow-sm"
+           style="background:#0b4a99;color:white;border:none;border-radius:8px;font-size:0.85rem;">
+            <i class="bi bi-download me-1"></i> Statement
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- ════════════════════════════════════════════
+         LEFT COLUMN
+    ═════════════════════════════════════════════ -->
+    <div class="col-lg-7">
+
+        <!-- Earnings Overview Card -->
+        <div class="rev-card shadow-sm mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0">Earnings Overview</h6>
+                {% if pct_change > 0 %}
+                <span class="trend-up"><i class="bi bi-graph-up-arrow me-1"></i>+{{ pct_change }}% vs last month</span>
+                {% elif pct_change < 0 %}
+                <span class="trend-down"><i class="bi bi-graph-down-arrow me-1"></i>{{ pct_change }}% vs last month</span>
+                {% else %}
+                <span class="trend-flat"><i class="bi bi-dash me-1"></i>No change vs last month</span>
+                {% endif %}
+            </div>
+
+            <!-- Three metric tiles -->
+            <div class="d-flex gap-3 mb-4">
+                <div class="earnings-tile">
+                    <div class="tile-label">Base Salary</div>
+                    <div class="tile-value">₹{{ base_salary|floatformat:0 }}</div>
+                    <div style="height:3px;background:#0b4a99;border-radius:2px;margin-top:0.75rem;width:40%;"></div>
+                </div>
+                <div class="earnings-tile">
+                    <div class="tile-label">Current Trip Bonus</div>
+                    <div class="tile-value" style="color:#0b4a99;">₹{{ current_trip_bonus|floatformat:0 }}</div>
+                    <div style="height:3px;background:#0b4a99;border-radius:2px;margin-top:0.75rem;width:40%;"></div>
+                </div>
+                <div class="earnings-tile tile-highlight">
+                    <div class="tile-label">Month-to-Date Total</div>
+                    <div class="tile-value">₹{{ mtd_total|floatformat:0 }}</div>
+                    <div style="height:3px;background:rgba(255,255,255,0.3);border-radius:2px;margin-top:0.75rem;width:40%;"></div>
+                </div>
+            </div>
+
+            <!-- Weekly Bar Chart -->
+            <div style="position:relative;height:180px;">
+                <canvas id="earningsChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════
+         RIGHT COLUMN – Performance Scorecard
+    ═════════════════════════════════════════════ -->
+    <div class="col-lg-5">
+        <div class="rev-card shadow-sm h-100">
+            <h6>Performance Scorecard</h6>
+
+            <!-- Safety -->
+            <div class="score-row">
+                <div class="score-label">
+                    <span><i class="bi bi-shield-check me-1 text-success"></i> Safety</span>
+                    <span class="text-success fw-bold">{{ safety_score }}/100</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill fill-green" style="width:{{ safety_score }}%;"></div>
+                </div>
+            </div>
+
+            <!-- Efficiency -->
+            <div class="score-row">
+                <div class="score-label">
+                    <span><i class="bi bi-lightning-charge me-1 text-primary"></i> Efficiency</span>
+                    <span class="text-primary fw-bold">{{ efficiency_score }}/100</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill fill-blue" style="width:{{ efficiency_score }}%;"></div>
+                </div>
+            </div>
+
+            <!-- Punctuality -->
+            <div class="score-row">
+                <div class="score-label">
+                    <span><i class="bi bi-clock me-1 text-warning"></i> Punctuality</span>
+                    <span class="text-warning fw-bold">{{ punctuality_score }}/100</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill fill-orange" style="width:{{ punctuality_score }}%;"></div>
+                </div>
+            </div>
+
+            <!-- Peer Status -->
+            <div class="peer-box">
+                <i class="bi bi-quote me-1"></i>
+                "{{ peer_status }}"
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PAYOUT HISTORY
+══════════════════════════════════════════════ -->
+<div class="rev-card shadow-sm mt-3 p-0 overflow-hidden">
+    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+        <h6 class="mb-0 px-1">Payout History</h6>
+        <a href="?download=pdf" class="btn btn-sm btn-link text-muted fw-bold text-decoration-none" style="font-size:0.8rem;">
+            <i class="bi bi-eye me-1"></i>View All Activities
+        </a>
+    </div>
+
+    <table class="table m-0 payout-table">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th>Base Salary</th>
+                <th>Bonuses</th>
+                <th>Total Paid</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payroll in payrolls %}
+            <tr>
+                <td class="fw-bold">{{ payroll.month|date:"F Y" }}</td>
+                <td>₹{{ payroll.base_salary|floatformat:0 }}</td>
+                <td class="text-success fw-bold">+ ₹{{ payroll.trip_bonus|floatformat:0 }}</td>
+                <td class="fw-bold" style="color:#1e293b;">₹{{ payroll.total_paid|floatformat:0 }}</td>
+                <td>
+                    {% if payroll.status == 'paid' %}
+                    <span class="payout-badge badge-settled">Settled</span>
+                    {% else %}
+                    <span class="payout-badge badge-processing">Processing</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="?download=pdf" title="Download Statement"
+                       class="btn btn-sm btn-light border px-2 py-1" style="font-size:0.8rem;">
+                        <i class="bi bi-receipt"></i>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-5 text-muted">
+                    <i class="bi bi-cash-stack d-block mb-2" style="font-size:2rem;"></i>
+                    No payout records found. Your manager will create payroll entries monthly.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // ── Earnings Bar Chart ──────────────────────────────────
+    const ctx = document.getElementById('earningsChart').getContext('2d');
+    const labels = {{ weekly_labels|safe }};
+    const values = {{ weekly_values|safe }};
+    const maxVal = Math.max(...values);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Weekly Earnings (₹)',
+                data: values,
+                backgroundColor: values.map(v =>
+                    v === maxVal
+                    ? 'rgba(11, 74, 153, 1)'
+                    : 'rgba(11, 74, 153, 0.25)'
+                ),
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => '₹' + ctx.parsed.y.toLocaleString('en-IN')
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        callback: v => '₹' + (v/1000).toFixed(0) + 'k',
+                        font: { size: 11 }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } }
+                }
+            }
+        }
+    });
+
+    // ── Auto-dismiss toasts ─────────────────────────────────
+    setTimeout(() => {
+        document.querySelectorAll('.toast').forEach(t => t.classList.remove('show'));
+    }, 4000);
+</script>
+{% endblock %}

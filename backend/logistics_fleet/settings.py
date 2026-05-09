@@ -131,10 +131,15 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
 # ──────────────────────────────────────────────────────────
-#  EMAIL  (console for dev; swap to SMTP in production)
+#  EMAIL  (SMTP Configuration)
 # ──────────────────────────────────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@logitracker.in'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'albinssuresh1883@gmail.com'
+EMAIL_HOST_PASSWORD = 'qpyf gpyz yqvu evmh' # Use Google App Passwords for security
+DEFAULT_FROM_EMAIL = 'noreply@logicontrol.in'
 
 # ──────────────────────────────────────────────────────────
 #  CRISPY FORMS
@@ -165,3 +170,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #  MISC
 # ──────────────────────────────────────────────────────────
 BASE_URL = 'http://127.0.0.1:8000'   # used in invitation emails
+
+# ──────────────────────────────────────────────────────────
+#  GOOGLE MAPS
+# ──────────────────────────────────────────────────────────
+MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'   # Replace with your key

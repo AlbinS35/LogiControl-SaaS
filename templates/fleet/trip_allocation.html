@@ -5,10 +5,9 @@
 {% block top_header_content %}
 <div class="d-flex align-items-center">
     <div class="me-4 pe-4 border-end">
-        <a href="{% url 'trip_allocation' %}" class="text-primary text-decoration-none fw-bold small me-3 border-bottom border-primary border-2 pb-2">Trip Allocation</a>
-        <a href="{% url 'fleet_registry' %}" class="text-muted text-decoration-none fw-bold small text-uppercase">Fleet</a>
-        <a href="{% url 'driver_directory' %}" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">Drivers</a>
-        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">Alerts</a>
+        <a href="{% url 'fleet_registry' %}" class="text-muted text-decoration-none fw-bold small me-3 text-uppercase">Fleet</a>
+        <a href="{% url 'driver_directory' %}" class="text-muted text-decoration-none fw-bold small text-uppercase">Drivers</a>
+        <a href="{% url 'manager_dashboard' %}" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">Alerts</a>
     </div>
     <div class="search-bar" style="background: #f1f5f9; border: none; width: 300px;">
         <i class="bi bi-search text-muted"></i>
@@ -144,6 +143,14 @@
                             <div>
                                 <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.6rem;">ETA</div>
                                 <div class="fw-bold fs-6 text-dark">{{ trip.scheduled_arrival|date:"M d, H:i" }}</div>
+                            </div>
+                            {% endif %}
+                            {% if trip.total_distance_km %}
+                            <div>
+                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.6rem;">DISTANCE</div>
+                                <div class="fw-bold fs-6" style="color:#4361ee;">
+                                    <i class="bi bi-signpost-2 me-1"></i>{{ trip.total_distance_km }} km
+                                </div>
                             </div>
                             {% endif %}
                         </div>
@@ -297,6 +304,7 @@
               <tr>
                 <th>Trip ID</th>
                 <th>Route</th>
+                <th>Distance</th>
                 <th>Vehicle</th>
                 <th>Goods</th>
                 <th>Scheduled Departure</th>
@@ -311,6 +319,13 @@
                 <td>
                     <i class="bi bi-geo-alt text-primary me-1"></i>
                     {{ trip.start_location }} → {{ trip.end_location }}
+                </td>
+                <td>
+                    {% if trip.total_distance_km %}
+                    <span class="fw-bold" style="color:#4361ee;">
+                        <i class="bi bi-signpost-2 me-1"></i>{{ trip.total_distance_km }} km
+                    </span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>{{ trip.vehicle.registration_number }}</td>
                 <td>{{ trip.goods_type|default:"—" }}{% if trip.goods_name %}<br><small class="text-muted">{{ trip.goods_name }}</small>{% endif %}</td>
@@ -387,6 +402,14 @@
           <div class="mb-3">
             <label class="form-label text-muted small fw-bold text-uppercase">Name of Goods</label>
             {{ form.goods_name }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label text-muted small fw-bold text-uppercase">Total Distance (km)</label>
+            <div class="input-group">
+              {{ form.total_distance_km }}
+              <span class="input-group-text">km</span>
+            </div>
+            <div class="form-text">Planned one-way route distance in kilometres.</div>
           </div>
           <div class="row">
             <div class="col-md-6 mb-3">

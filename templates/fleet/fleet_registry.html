@@ -6,10 +6,9 @@
 {% block top_header_content %}
 <div class="d-flex align-items-center">
     <div class="me-4 pe-4 border-end">
-        <a href="{% url 'trip_allocation' %}" class="text-muted text-decoration-none fw-bold small me-3">Trip Allocation</a>
-        <a href="{% url 'fleet_registry' %}" class="text-primary text-decoration-none fw-bold small border-bottom border-primary border-2 pb-2">FLEET</a>
+        <a href="{% url 'fleet_registry' %}" class="text-primary text-decoration-none fw-bold small border-bottom border-primary border-2 pb-2 me-3">FLEET</a>
         <a href="{% url 'driver_directory' %}" class="text-muted text-decoration-none fw-bold small ms-3">DRIVERS</a>
-        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3">ALERTS</a>
+        <a href="{% url 'manager_dashboard' %}" class="text-muted text-decoration-none fw-bold small ms-3">ALERTS</a>
     </div>
     <div class="search-bar" style="background: #f1f5f9; border: none; width: 300px;">
         <i class="bi bi-search text-muted"></i>
@@ -116,22 +115,22 @@
     <!-- Right Column: Vehicle List -->
     <div class="col-lg-8">
         <!-- Sub Tabs -->
-        <ul class="nav nav-tabs border-bottom mb-4">
+        <ul class="nav nav-tabs border-bottom mb-4" id="fleetFilterTabs">
             <li class="nav-item">
-                <a class="nav-link active fw-bold border-bottom border-primary border-2 px-4 text-primary" href="#">All Vehicles</a>
+                <a class="nav-link active fw-bold border-bottom border-primary border-2 px-4 text-primary" href="#" data-filter="all">All Vehicles</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-muted fw-bold px-4" href="#">Expiring Soon (5)</a>
+                <a class="nav-link text-muted fw-bold px-4" href="#" data-filter="expiring">Expiring Soon</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-muted fw-bold px-4" href="#">Action Required ({{ expired_vehicles }})</a>
+                <a class="nav-link text-muted fw-bold px-4" href="#" data-filter="action">Action Required ({{ expired_vehicles }})</a>
             </li>
         </ul>
         
         <!-- Vehicles -->
-        <div class="d-flex flex-column gap-3">
+        <div class="d-flex flex-column gap-3" id="vehiclesList">
             {% for vehicle in vehicles %}
-            <div class="card border-0 shadow-sm rounded-3">
+            <div class="card border-0 shadow-sm rounded-3 vehicle-item">
                 <div class="card-body p-3 d-flex align-items-center justify-content-between">
                     <!-- Vehicle Info -->
                     <div class="d-flex align-items-center" style="width: 25%;">
@@ -184,8 +183,12 @@
                     
                     <!-- Actions -->
                     <div class="d-flex gap-2">
+                        <button class="btn btn-light border text-muted" title="Maintenance History"
+                                data-bs-toggle="modal" data-bs-target="#maintModal{{ vehicle.id }}">
+                            <i class="bi bi-wrench-adjustable"></i>
+                        </button>
                         <button class="btn btn-light border text-muted" data-bs-toggle="modal" data-bs-target="#editModal{{ vehicle.id }}"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-danger bg-opacity-10 border border-danger text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ vehicle.id }}"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-danger text-white" data-bs-toggle="modal" data-bs-target="#deleteModal{{ vehicle.id }}"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
             </div>
@@ -255,7 +258,169 @@
                 </div>
             </div>
 
-            <!-- Delete Modal -->
+            <!-- Maintenance History Modal -->
+            <div class="modal fade" id="maintModal{{ vehicle.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header" style="background:#0b4a99;color:white;">
+                            <h5 class="modal-title fw-bold">
+                                <i class="bi bi-wrench-adjustable me-2"></i>
+                                Maintenance History — {{ vehicle.registration_number }}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-0">
+
+                            <!-- Vehicle Summary Bar -->
+                            <div class="d-flex align-items-center gap-4 px-4 py-3" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                                <div>
+                                    <div class="text-muted" style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Make / Model</div>
+                                    <div class="fw-bold">{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year }})</div>
+                                </div>
+                                <div>
+                                    <div class="text-muted" style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Odometer</div>
+                                    <div class="fw-bold">{{ vehicle.current_odometer }} km</div>
+                                </div>
+                                <div>
+                                    <div class="text-muted" style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Status</div>
+                                    <div class="fw-bold"
+                                         {% if vehicle.status == 'maintenance' %}style="color:#f59e0b;"{% elif vehicle.status == 'active' %}style="color:#22c55e;"{% endif %}>
+                                        {{ vehicle.get_status_display }}
+                                    </div>
+                                </div>
+                                <div class="ms-auto">
+                                    <span class="badge px-3 py-2" style="background:#eff6ff;color:#0b4a99;font-size:0.75rem;">
+                                        {{ vehicle.maintenance_records.count }} Record{{ vehicle.maintenance_records.count|pluralize }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Records Table -->
+                            <div class="table-responsive">
+                                <table class="table align-middle m-0" style="font-size:0.875rem;">
+                                    <thead style="background:#f8fafc;">
+                                        <tr>
+                                            <th class="px-4 py-3" style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Date</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Service Type</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Garage</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Description</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Cost</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Status</th>
+                                            <th style="font-size:0.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Invoice</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for rec in vehicle.maintenance_records.all %}
+                                        <tr style="border-bottom:1px solid #f1f5f9;">
+                                            <td class="px-4">
+                                                <div class="fw-bold">{{ rec.scheduled_date|date:"d M Y"|default:"—" }}</div>
+                                                {% if rec.completed_date %}<div class="text-muted" style="font-size:0.75rem;">Done: {{ rec.completed_date|date:"d M Y" }}</div>{% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="d-flex align-items-center gap-1">
+                                                    <i class="bi bi-tools text-primary"></i>
+                                                    {{ rec.get_service_type_display }}
+                                                </span>
+                                            </td>
+                                            <td>{{ rec.garage_name|default:"—" }}</td>
+                                            <td style="max-width:200px;">{{ rec.description|truncatechars:60 }}</td>
+                                            <td class="fw-bold" style="color:#0b4a99;">{% if rec.cost %}₹{{ rec.cost|floatformat:0 }}{% else %}—{% endif %}</td>
+                                            <td>
+                                                {% if rec.status == 'completed' %}
+                                                <span class="badge px-3 py-1" style="background:#dcfce7;color:#166534;border-radius:50px;font-size:0.68rem;">Completed</span>
+                                                {% elif rec.status == 'in_progress' %}
+                                                <span class="badge px-3 py-1" style="background:#fef9c3;color:#854d0e;border-radius:50px;font-size:0.68rem;">In Progress</span>
+                                                {% elif rec.status == 'scheduled' %}
+                                                <span class="badge px-3 py-1" style="background:#eff6ff;color:#1d4ed8;border-radius:50px;font-size:0.68rem;">Scheduled</span>
+                                                {% else %}
+                                                <span class="badge px-3 py-1" style="background:#f1f5f9;color:#64748b;border-radius:50px;font-size:0.68rem;">Cancelled</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if rec.invoice_image %}
+                                                <a href="{{ rec.invoice_image.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-2" style="font-size:0.75rem;">
+                                                    <i class="bi bi-image me-1"></i>View
+                                                </a>
+                                                {% else %}<span class="text-muted">—</span>{% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-center py-5 text-muted">
+                                                <i class="bi bi-wrench d-block mb-2" style="font-size:2rem;"></i>
+                                                No maintenance records yet for this vehicle.
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Log New Entry Form -->
+                            <div class="p-4 border-top" style="background:#f8fafc;">
+                                <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 text-primary"></i>Log New Maintenance Entry</h6>
+                                <form method="POST" action="{% url 'fleet_registry' %}" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_maintenance">
+                                    <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
+                                    <div class="row g-3">
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Service Type</label>
+                                            <select name="service_type" class="form-select form-select-sm" required>
+                                                <option value="routine">Routine Service</option>
+                                                <option value="repair">Breakdown Repair</option>
+                                                <option value="tyre">Tyre Replacement</option>
+                                                <option value="oil">Oil Change</option>
+                                                <option value="brake">Brake Service</option>
+                                                <option value="electrical">Electrical Repair</option>
+                                                <option value="bodywork">Bodywork / Denting</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Garage Name</label>
+                                            <input type="text" name="garage_name" class="form-control form-control-sm" placeholder="e.g. Ravi Auto Works">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Scheduled Date</label>
+                                            <input type="date" name="scheduled_date" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Cost (₹)</label>
+                                            <input type="number" name="cost" class="form-control form-control-sm" step="0.01" placeholder="0.00">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Status</label>
+                                            <select name="status" class="form-select form-select-sm">
+                                                <option value="scheduled">Scheduled</option>
+                                                <option value="in_progress">In Progress</option>
+                                                <option value="completed">Completed</option>
+                                                <option value="cancelled">Cancelled</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Description *</label>
+                                            <input type="text" name="description" class="form-control form-control-sm" required placeholder="e.g. Full engine service + oil change at 45000km">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label fw-bold small text-muted text-uppercase" style="letter-spacing:0.4px;">Invoice Image</label>
+                                            <input type="file" name="invoice_image" class="form-control form-control-sm" accept="image/*,.pdf">
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold" style="background:#0b4a99;border:none;">
+                                                <i class="bi bi-check-circle me-1"></i>Save Record
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="modal fade" id="deleteModal{{ vehicle.id }}" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -319,4 +484,56 @@
 <button class="btn btn-primary rounded-circle position-fixed shadow" data-bs-toggle="modal" data-bs-target="#addVehicleModal" style="width: 60px; height: 60px; bottom: 30px; right: 30px; font-size: 1.5rem; background-color: #0b4a99; border: none;">
     <i class="bi bi-plus"></i>
 </button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const tabs = document.querySelectorAll('#fleetFilterTabs .nav-link');
+    const vehicles = document.querySelectorAll('.vehicle-item');
+
+    // Make alerts functional with a simple listener if it's pointing to manager dashboard
+    const alertLink = document.querySelector('a:contains("ALERTS")');
+    if (alertLink && alertLink.getAttribute('href') === '#') {
+        alertLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            alert("No new alerts at this time.");
+        });
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            // Update active tab styling
+            tabs.forEach(t => {
+                t.classList.remove('active', 'border-bottom', 'border-primary', 'border-2', 'text-primary');
+                t.classList.add('text-muted');
+            });
+            this.classList.remove('text-muted');
+            this.classList.add('active', 'border-bottom', 'border-primary', 'border-2', 'text-primary');
+
+            const filter = this.getAttribute('data-filter');
+            
+            vehicles.forEach(vehicle => {
+                const hasDanger = vehicle.querySelector('.bg-danger') !== null;
+                const hasWarning = vehicle.querySelector('.bg-warning') !== null;
+                
+                if (filter === 'all') {
+                    vehicle.style.display = 'block';
+                } else if (filter === 'expiring') {
+                    vehicle.style.display = hasWarning ? 'block' : 'none';
+                } else if (filter === 'action') {
+                    vehicle.style.display = hasDanger ? 'block' : 'none';
+                }
+            });
+        });
+    });
+});
+
+// Polyfill for :contains
+jQuery.expr[':'].contains = function(a, i, m) {
+  return jQuery(a).text().toUpperCase()
+      .indexOf(m[3].toUpperCase()) >= 0;
+};
+</script>
 {% endblock %}

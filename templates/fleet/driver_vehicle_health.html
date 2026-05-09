@@ -1,0 +1,238 @@
+{% extends 'driver_base.html' %}
+{% block title %}Vehicle Health – LogiControl India{% endblock %}
+
+{% block extra_css %}
+<style>
+    .health-card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.5rem; margin-bottom: 1.5rem; }
+    
+    /* Circular Progress */
+    .circ-wrap { width: 120px; height: 120px; position: relative; margin: 0 auto; }
+    .circ-bg   { fill: none; stroke: #f1f5f9; stroke-width: 8; }
+    .circ-val  { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dasharray 1s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .circ-text { font-size: 1.8rem; font-weight: 800; fill: #1e293b; text-anchor: middle; dominant-baseline: central; }
+    
+    /* Colors */
+    .c-blue   { stroke: #0b4a99; }
+    .c-green  { stroke: #16a34a; }
+    .c-orange { stroke: #d97706; }
+    
+    .metric-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; margin-top: 1rem; margin-bottom: 0.2rem; text-align: center; }
+    .metric-sub   { font-size: 0.7rem; color: #64748b; text-align: center; }
+
+    /* Table */
+    .m-table th { font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.75rem; }
+    .m-table td { padding: 1rem 0; font-size: 0.85rem; font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9; }
+    
+    /* Badges */
+    .status-badge { padding: 0.35rem 0.8rem; border-radius: 50px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+    .status-completed { background: #dcfce7; color: #166534; }
+    .status-upcoming  { background: #eff6ff; color: #1d4ed8; }
+    .status-overdue   { background: #fef2f2; color: #b91c1c; }
+    
+    .fault-btn { background: #d97706; color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 0.5rem; font-weight: 700; font-size: 0.85rem; transition: background 0.2s; }
+    .fault-btn:hover { background: #b45309; color: white; }
+    
+    .insights-box { background: linear-gradient(135deg, #0b4a99, #1e3a8a); color: white; border-radius: 1rem; padding: 2rem; position: relative; overflow: hidden; }
+    .insights-text { position: relative; z-index: 2; max-width: 60%; }
+    .insights-img { position: absolute; right: -5%; bottom: -10%; height: 120%; opacity: 0.3; pointer-events: none; }
+</style>
+{% endblock %}
+
+{% block driver_content %}
+{% if messages %}
+<div class="mb-4">
+    {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }} alert-dismissible fade show fw-bold shadow-sm" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not vehicle %}
+<div class="health-card text-center py-5">
+    <i class="bi bi-truck-flatbed text-muted" style="font-size: 3rem;"></i>
+    <h5 class="fw-bold mt-3">No Active Vehicle</h5>
+    <p class="text-muted">You are not currently assigned to an active trip with a vehicle.</p>
+</div>
+{% else %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold text-dark mb-1">Vehicle Health: Unit {{ vehicle.registration_number }}</h4>
+        <p class="text-muted mb-0" style="font-size: 0.85rem;">Real-time precision monitoring of high-value fleet assets.</p>
+    </div>
+    <button class="fault-btn shadow-sm" data-bs-toggle="modal" data-bs-target="#faultModal">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Report Fault/Alert
+    </button>
+</div>
+
+<!-- System Health Summary -->
+<div class="health-card shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h6 class="fw-bold mb-0"><i class="bi bi-cpu text-primary me-2"></i>System Health Summary</h6>
+        <span class="status-badge" style="background: {{ health_color }}20; color: {{ health_color }};">
+            {{ health_status }}
+        </span>
+    </div>
+    
+    <div class="row text-center">
+        <!-- Engine -->
+        <div class="col-md-4">
+            <svg class="circ-wrap" viewBox="0 0 100 100">
+                <circle class="circ-bg" cx="50" cy="50" r="40"></circle>
+                <circle class="circ-val c-blue" cx="50" cy="50" r="40" stroke-dasharray="0, 251.2" id="circ-engine"></circle>
+                <text class="circ-text" x="50" y="50">{{ vehicle.engine_performance }}%</text>
+            </svg>
+            <div class="metric-title">Engine Performance</div>
+            <div class="metric-sub">Compression: {{ vehicle.engine_compression|default:"14.5" }} PSI</div>
+        </div>
+        <!-- Tire -->
+        <div class="col-md-4">
+            <svg class="circ-wrap" viewBox="0 0 100 100">
+                <circle class="circ-bg" cx="50" cy="50" r="40"></circle>
+                <circle class="circ-val c-green" cx="50" cy="50" r="40" stroke-dasharray="0, 251.2" id="circ-tire"></circle>
+                <text class="circ-text" x="50" y="50">{{ vehicle.tire_integrity }}%</text>
+            </svg>
+            <div class="metric-title">Tire Integrity</div>
+            <div class="metric-sub">Pressure: {{ vehicle.tire_pressure|default:"32.4" }} Bar</div>
+        </div>
+        <!-- Battery -->
+        <div class="col-md-4">
+            <svg class="circ-wrap" viewBox="0 0 100 100">
+                <circle class="circ-bg" cx="50" cy="50" r="40"></circle>
+                <circle class="circ-val c-orange" cx="50" cy="50" r="40" stroke-dasharray="0, 251.2" id="circ-battery"></circle>
+                <text class="circ-text" x="50" y="50">{{ vehicle.battery_life }}%</text>
+            </svg>
+            <div class="metric-title">Battery Life</div>
+            <div class="metric-sub" {% if vehicle.battery_life < 60 %}style="color:#d97706;font-weight:700;"{% endif %}>
+                {% if vehicle.battery_life < 60 %}Low Voltage Warning{% else %}Normal Output{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Maintenance History -->
+<div class="health-card shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h6 class="fw-bold mb-0"><i class="bi bi-wrench-adjustable text-primary me-2"></i>Maintenance History</h6>
+        <a href="#" class="text-decoration-none text-primary fw-bold" style="font-size: 0.8rem;">View All Logs</a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table m-table align-middle">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Service Type</th>
+                    <th style="width: 20%;">Last Service Date</th>
+                    <th style="width: 20%;">Next Scheduled Check</th>
+                    <th style="width: 20%;">Technician</th>
+                    <th style="width: 15%; text-align: right;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in maintenance_logs %}
+                <tr>
+                    <td>{{ log.service_type }}</td>
+                    <td class="text-muted">{{ log.last_service_date|date:"M d, Y" }}</td>
+                    <td {% if log.status == 'OVERDUE' %}style="color:#b91c1c;font-weight:800;"{% elif log.status == 'UPCOMING' %}style="color:#0b4a99;font-weight:800;"{% endif %}>
+                        {{ log.next_scheduled_check|date:"M d, Y" }}
+                    </td>
+                    <td class="text-muted">{{ log.technician }}</td>
+                    <td class="text-end">
+                        {% if log.status == 'COMPLETED' %}
+                        <span class="status-badge status-completed">Completed</span>
+                        {% elif log.status == 'UPCOMING' %}
+                        <span class="status-badge status-upcoming">Upcoming</span>
+                        {% else %}
+                        <span class="status-badge status-overdue">Overdue</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No maintenance logs found for this vehicle.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Insights Box -->
+<div class="insights-box shadow-sm mb-4">
+    <!-- Replace with an actual background image if available, using a placeholder for the gradient effect -->
+    <div class="insights-text">
+        <h4 class="fw-bold mb-3">Fleet-Wide Health Insights</h4>
+        <p style="font-size: 0.95rem; opacity: 0.9; line-height: 1.6;">
+            Predictive maintenance is reducing downtime by 14% across your regional fleet units. LogiTracker systems suggest scheduling Unit {{ vehicle.registration_number }} for an immediate battery diagnostic.
+        </p>
+        <div class="mt-4">
+            <button class="btn btn-light fw-bold me-3 rounded-1 px-4 text-primary">Download Full Report</button>
+            <button class="btn btn-outline-light fw-bold rounded-1 px-4">Schedule Fleet Check</button>
+        </div>
+    </div>
+</div>
+
+<!-- Fault Report Modal -->
+<div class="modal fade" id="faultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header" style="background:#d97706;color:white;border-bottom:none;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Report a Fault</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted small mb-4">This will send an immediate high-priority alert to your fleet manager.</p>
+                <form method="POST" action="{% url 'driver_vehicle_health' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="report_fault">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Vehicle</label>
+                        <input type="text" class="form-control bg-light" value="{{ vehicle.registration_number }}" readonly>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Issue Description</label>
+                        <textarea name="fault_description" class="form-control" rows="4" placeholder="e.g. Engine making knocking sounds above 60km/h" required></textarea>
+                    </div>
+                    <button type="submit" class="btn w-100 fw-bold" style="background:#d97706;color:white;">Submit Alert</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if vehicle %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const r = 40;
+    const c = 2 * Math.PI * r;
+    
+    // Engine
+    const engPct = {{ vehicle.engine_performance }};
+    const engDash = (engPct / 100) * c;
+    setTimeout(() => {
+        document.getElementById('circ-engine').style.strokeDasharray = `${engDash}, ${c}`;
+    }, 100);
+    
+    // Tire
+    const tirePct = {{ vehicle.tire_integrity }};
+    const tireDash = (tirePct / 100) * c;
+    setTimeout(() => {
+        document.getElementById('circ-tire').style.strokeDasharray = `${tireDash}, ${c}`;
+    }, 300);
+    
+    // Battery
+    const batPct = {{ vehicle.battery_life }};
+    const batDash = (batPct / 100) * c;
+    setTimeout(() => {
+        document.getElementById('circ-battery').style.strokeDasharray = `${batDash}, ${c}`;
+    }, 500);
+});
+</script>
+{% endif %}
+{% endblock %}

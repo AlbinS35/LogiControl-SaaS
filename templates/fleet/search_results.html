@@ -1,0 +1,121 @@
+{% extends 'enterprise_base.html' %}
+
+{% block title %}Search Results - LogiControl India{% endblock %}
+
+{% block enterprise_content %}
+<div class="mb-4">
+    <h2 class="fw-bold text-dark mb-1">Universal Search Results</h2>
+    <p class="text-muted mb-0">Showing results for "<strong class="text-primary">{{ query }}</strong>"</p>
+</div>
+
+<div class="row g-4">
+    <!-- Drivers -->
+    <div class="col-12">
+        <h5 class="fw-bold text-dark mb-3">Drivers ({{ drivers.count }})</h5>
+        {% if drivers %}
+        <div class="table-panel">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Driver Name</th>
+                        <th>Work Email (ID)</th>
+                        <th>License</th>
+                        <th>Phone</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for driver in drivers %}
+                    <tr>
+                        <td class="fw-bold">{{ driver.get_full_name|default:driver.first_name }}</td>
+                        <td>{{ driver.username }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ driver.driving_license|default:"N/A" }}</span></td>
+                        <td>{{ driver.phone_number|default:"N/A" }}</td>
+                        <td><a href="{% url 'driver_directory' %}" class="btn btn-sm btn-outline-primary">Manage</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted small">No drivers found matching "{{ query }}".</div>
+        {% endif %}
+    </div>
+
+    <!-- Vehicles -->
+    <div class="col-12">
+        <h5 class="fw-bold text-dark mb-3 mt-4">Vehicles ({{ vehicles.count }})</h5>
+        {% if vehicles %}
+        <div class="table-panel">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Registration</th>
+                        <th>Make & Model</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vehicle in vehicles %}
+                    <tr>
+                        <td class="fw-bold">{{ vehicle.registration_number }}</td>
+                        <td>{{ vehicle.make }} {{ vehicle.model }}</td>
+                        <td>
+                            {% if vehicle.status == 'active' %}
+                            <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3">ACTIVE</span>
+                            {% elif vehicle.status == 'maintenance' %}
+                            <span class="badge bg-danger bg-opacity-25 text-danger rounded-pill px-3">MAINTENANCE</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark rounded-pill px-3">{{ vehicle.get_status_display|upper }}</span>
+                            {% endif %}
+                        </td>
+                        <td><a href="{% url 'fleet_registry' %}" class="btn btn-sm btn-outline-primary">View in Registry</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted small">No vehicles found matching "{{ query }}".</div>
+        {% endif %}
+    </div>
+
+    <!-- Trips -->
+    <div class="col-12">
+        <h5 class="fw-bold text-dark mb-3 mt-4">Trips ({{ trips.count }})</h5>
+        {% if trips %}
+        <div class="table-panel">
+            <table class="table table-hover align-middle m-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Trip ID</th>
+                        <th>Route</th>
+                        <th>Driver</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trip in trips %}
+                    <tr>
+                        <td class="fw-bold">LC-{{ trip.id }}</td>
+                        <td>{{ trip.start_location }} → {{ trip.end_location }}</td>
+                        <td>{{ trip.driver.get_full_name|default:"Unassigned" }}</td>
+                        <td>
+                            {% if trip.status == 'in_progress' %}
+                            <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-3">IN PROGRESS</span>
+                            {% else %}
+                            <span class="badge bg-light text-dark rounded-pill px-3 border">{{ trip.get_status_display|upper }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted small">No trips found matching "{{ query }}".</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

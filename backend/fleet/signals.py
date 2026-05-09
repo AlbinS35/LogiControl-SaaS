@@ -29,22 +29,38 @@ def generate_driver_invitation_token(sender, instance, **kwargs):
 @receiver(post_save, sender='fleet.User')
 def send_driver_invitation_email(sender, instance, created, **kwargs):
     """
-    After a new driver is created, send a welcome / invitation email.
+    After a new driver is created, send a welcome / invitation email asynchronously.
     """
     if created and instance.role == 'driver' and instance.email:
-        subject = f"Welcome to {instance.company.name if instance.company else 'LogiTracker'}!"
-        body = (
-            f"Hi {instance.get_full_name() or instance.username},\n\n"
-            f"Your driver account has been created.\n"
-            f"Username : {instance.username}\n"
-            f"Password : Driver@123  (please change this immediately)\n\n"
-            f"Login at: {settings.BASE_URL if hasattr(settings, 'BASE_URL') else 'http://127.0.0.1:8000'}/login/\n\n"
-            f"— LogiTracker Team"
-        )
-        try:
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [instance.email])
-        except Exception:
-            pass  # Email sending is best-effort; don't break user creation
+        raw_password = getattr(instance, '_raw_password', 'Driver@123')
+        context = {
+            'first_name': instance.get_full_name() or instance.first_name,
+            'work_email': instance.username,
+            'password': raw_password,
+            'login_url': f"{getattr(settings, 'BASE_URL', 'http://127.0.0.1:8000')}/login/"
+        }
+        
+        def send_async_email(email_address, email_context):
+            from django.template.loader import render_to_string
+            from django.utils.html import strip_tags
+            try:
+                html_message = render_to_string('fleet/onboarding_email.html', email_context)
+                plain_message = strip_tags(html_message)
+                send_mail(
+                    subject="Welcome to LogiControl India - Your Credentials",
+                    message=plain_message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email_address],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Failed to send email to {email_address}: {e}")
+
+        import threading
+        thread = threading.Thread(target=send_async_email, args=(instance.email, context))
+        thread.daemon = True
+        thread.start()
 
 
 # ─────────────────────────────────────────────

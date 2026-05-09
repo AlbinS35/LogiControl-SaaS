@@ -222,7 +222,7 @@
         <p class="mb-0 text-white-50" style="font-size: 0.9rem;">Register new personnel to the LogiControl Fleet Registry</p>
     </div>
     <div class="card-body p-5">
-        <form method="post" action="{% url 'driver_directory' %}">
+        <form method="post" action="{% url 'driver_directory' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" name="action" value="add_driver">
             
@@ -240,16 +240,38 @@
                     <label class="form-label fw-bold small text-muted">Date of Birth</label>
                     <input type="date" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="date_of_birth" required>
                 </div>
-                
                 <div class="col-md-6">
                     <label class="form-label fw-bold small text-muted">Driving License Number</label>
                     <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="driving_license" placeholder="DL-00-0000000000" required>
                 </div>
+                
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">License Category</label>
+                    <select class="form-select form-select-lg border-light shadow-sm" style="font-size: 0.9rem;" name="license_type" required>
+                        <option value="" disabled selected>Select License Category</option>
+                        <option value="LMV">Light Motor Vehicle (LMV)</option>
+                        <option value="HMV">Heavy Motor Vehicle (HMV)</option>
+                        <option value="Trailer">HPMV/HGMV with Trailer Endorsement</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">License Expiry Date</label>
+                    <input type="date" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="dl_expiry" required>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Aadhaar / National ID</label>
+                    <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="aadhaar_number" placeholder="12-digit Aadhaar Number" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Badge Number (RTO)</label>
+                    <input type="text" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="badge_number" placeholder="RTO Badge Number">
+                </div>
+
                 <div class="col-md-6">
                     <label class="form-label fw-bold small text-muted">Years of Experience</label>
                     <input type="number" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="experience_years" placeholder="Years" required>
                 </div>
-                
                 <div class="col-md-6">
                     <label class="form-label fw-bold small text-muted">Phone Number</label>
                     <div class="input-group input-group-lg shadow-sm">
@@ -257,9 +279,41 @@
                         <input type="text" class="form-control border-light border-start-0" style="font-size: 0.9rem;" name="phone_number" placeholder="9876543210" required>
                     </div>
                 </div>
-                <div class="col-md-6">
+                
+                <div class="col-md-12">
                     <label class="form-label fw-bold small text-muted">Email Address</label>
                     <input type="email" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="email" placeholder="driver@example.com" required>
+                </div>
+
+                <div class="col-md-12 mt-4">
+                    <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                        <input class="form-check-input ms-0 me-3" type="checkbox" role="switch" id="hazmatSwitch" name="hazmat_certified">
+                        <label class="form-check-label fw-bold text-dark" for="hazmatSwitch" style="font-size: 0.95rem;">
+                            Hazmat Certified Driver
+                            <span class="d-block text-muted fw-normal mt-1" style="font-size: 0.8rem;">Indicates this driver has the required certifications to safely transport hazardous materials.</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Document Vault Section -->
+                <div class="col-12 mt-4">
+                    <h6 class="fw-bold border-bottom pb-2 mb-3">Document Vault Scans</h6>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Driving License (Front)</label>
+                    <input type="file" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="dl_front" accept="image/*,.pdf" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Driving License (Back)</label>
+                    <input type="file" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="dl_back" accept="image/*,.pdf" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Medical Fitness Certificate</label>
+                    <input type="file" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="medical_certificate" accept="image/*,.pdf" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small text-muted">Police Verification Report</label>
+                    <input type="file" class="form-control form-control-lg border-light shadow-sm" style="font-size: 0.9rem;" name="police_verification" accept="image/*,.pdf" required>
                 </div>
             </div>
             

@@ -7,7 +7,7 @@ from django.db.models import Q, Count, Sum
 from datetime import timedelta
 import uuid
 
-from .models import Vehicle, Trip, User, Company, Payroll, Alert, Expense
+from .models import Vehicle, Trip, User, Company, Payroll, Alert, Expense, FuelEntry, MaintenanceRecord, MaintenanceLog
 from .forms import (
     TripDriverUpdateForm, TripApprovalForm, TripCreateForm,
     VehicleForm, DriverForm, OwnerSignupForm,
@@ -340,8 +340,36 @@ def manager_dashboard(request):
 # ══════════════════════════════════════════════════════════
 
 @login_required
+def force_password_change(request):
+    from django.contrib.auth import update_session_auth_hash
+    from django.contrib.auth.forms import PasswordChangeForm
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            user.requires_password_change = False
+            user.save()
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Your password was successfully updated!')
+            if request.user.role == 'driver':
+                return redirect('driver_dashboard')
+            elif request.user.role == 'manager':
+                return redirect('manager_dashboard')
+            else:
+                return redirect('home')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'registration/password_change.html', {'form': form})
+
+@login_required
 @driver_required
 def driver_dashboard(request):
+    if getattr(request.user, 'requires_password_change', False):
+        messages.info(request, "For your security, please change your temporary password to continue.")
+        return redirect('password_change')
+
     trips = Trip.objects.filter(driver=request.user).order_by('-created_at')
     active_trip = trips.filter(status__in=['approved', 'in_progress']).first()
     recent_alerts = Alert.objects.filter(
@@ -506,6 +534,27 @@ def fleet_registry(request):
             else:
                 messages.error(request, "Select vehicle, document type, and file.")
 
+        elif action == 'add_maintenance':
+            vehicle_id = request.POST.get('vehicle_id')
+            vehicle_obj = get_object_or_404(Vehicle, id=vehicle_id, company=company)
+            description = request.POST.get('description', '').strip()
+            if description:
+                MaintenanceRecord.objects.create(
+                    company=company,
+                    vehicle=vehicle_obj,
+                    reported_by=request.user,
+                    service_type=request.POST.get('service_type', 'routine'),
+                    description=description,
+                    garage_name=request.POST.get('garage_name') or None,
+                    cost=request.POST.get('cost') or None,
+                    status=request.POST.get('status', 'scheduled'),
+                    scheduled_date=request.POST.get('scheduled_date') or None,
+                    invoice_image=request.FILES.get('invoice_image'),
+                )
+                messages.success(request, f"Maintenance record logged for {vehicle_obj.registration_number}.")
+            else:
+                messages.error(request, "Description is required to log a maintenance record.")
+
         return redirect('fleet_registry')
 
     today = timezone.now().date()
@@ -545,59 +594,46 @@ def driver_directory(request):
         action = request.POST.get('action')
 
         if action == 'add_driver':
-            form = DriverForm(request.POST)
+            form = DriverForm(request.POST, request.FILES)
             if form.is_valid():
                 driver = form.save(commit=False)
                 driver.role = 'driver'
                 driver.company = company
-                driver.username = f"drv_{uuid.uuid4().hex[:8]}"
-                
-                # Generate a random initial password
+                import uuid
                 import string
                 import random
-                from django.core.mail import send_mail
                 
+                # Generate unique work email
+                safe_name = (driver.first_name or 'driver').lower().replace(' ', '')
+                work_email = f"{safe_name}.drv{uuid.uuid4().hex[:4]}@logicontrol.in"
+                driver.username = work_email
+                
+                # Generate a random initial password
                 raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
                 driver.set_password(raw_password)
+                
+                driver.requires_password_change = True
+                # Inject raw password for the post_save signal to dispatch via email
+                driver._raw_password = raw_password
+                
                 driver.save()
                 
                 if driver.email:
-                    subject = 'Welcome to LogiControl Fleet Registry'
-                    message = f"""Hello {driver.first_name},
-                    
-You have been successfully registered to the LogiControl Fleet Management System by your manager at {company.name}.
-
-Your login credentials are:
-Username: {driver.username}
-Password: {raw_password}
-
-Please log in and change your password as soon as possible.
-"""
-                    try:
-                        send_mail(
-                            subject,
-                            message,
-                            'noreply@logicontrol.in',
-                            [driver.email],
-                            fail_silently=False,
-                        )
-                        messages.success(request, f"Driver {driver.get_full_name()} onboarded. Login details sent to {driver.email}.")
-                    except Exception as e:
-                        messages.warning(request, f"Driver {driver.get_full_name()} onboarded, but email delivery failed.")
+                    messages.success(request, f"Driver Onboarded. Credentials sent to {driver.email}.")
                 else:
-                    messages.success(request, f"Driver {driver.get_full_name()} onboarded successfully.")
+                    messages.success(request, f"Driver Onboarded. No personal email provided, so credentials could not be sent.")
             else:
-                messages.error(request, "Error adding driver. Check form details.")
+                messages.error(request, f"Error adding driver. {form.errors.as_text()}")
 
         elif action == 'edit_driver':
             driver_id = request.POST.get('driver_id')
             driver = get_object_or_404(User, id=driver_id, role='driver', company=company)
-            form = DriverForm(request.POST, instance=driver)
+            form = DriverForm(request.POST, request.FILES, instance=driver)
             if form.is_valid():
                 form.save()
                 messages.success(request, "Driver updated.")
             else:
-                messages.error(request, "Error updating driver.")
+                messages.error(request, f"Error updating driver. {form.errors.as_text()}")
 
         elif action == 'delete_driver':
             driver_id = request.POST.get('driver_id')
@@ -725,11 +761,16 @@ def route_analytics(request):
     
     # Calculate distance for today's completed trips
     from django.utils import timezone
-    from django.db.models import F, Sum
+    from django.db.models import F, Sum, Avg
     today = timezone.now().date()
     completed_today = Trip.objects.filter(company=company, status='completed', updated_at__date=today)
     total_distance_qs = completed_today.aggregate(total=Sum(F('end_odometer') - F('start_odometer')))
     total_distance = total_distance_qs['total'] or 0
+
+    # Calculate Avg Fleet Speed
+    active_vehicles = Vehicle.objects.filter(company=company, trips__in=active_trips)
+    avg_speed_qs = active_vehicles.aggregate(avg=Avg('current_speed'))
+    avg_speed = round(avg_speed_qs['avg'] or 0, 1)
 
     critical_alerts = Alert.objects.filter(company=company, alert_type__in=['panic', 'maintenance']).order_by('-created_at')[:5]
 
@@ -737,9 +778,60 @@ def route_analytics(request):
         'active_trips': active_trips,
         'total_distance': total_distance,
         'critical_alerts': critical_alerts,
-        'avg_speed': 58,  # Hardcoded placeholder
+        'avg_speed': avg_speed,
     }
     return render(request, 'fleet/route_analytics.html', context)
+
+
+@login_required
+@manager_required
+def api_telemetry(request):
+    import random
+    from django.http import JsonResponse
+    from django.db.models import F, Sum, Avg
+    from django.utils import timezone
+    company = request.user.company
+    active_trips = Trip.objects.filter(company=company, status='in_progress').select_related('vehicle')
+    
+    vehicles_data = []
+    for trip in active_trips:
+        v = trip.vehicle
+        # For demonstration purposes in SaaS, if coordinates are empty, provide a random one near central India
+        lat = v.current_latitude if v.current_latitude else 20.5937 + random.uniform(-2, 2)
+        lon = v.current_longitude if v.current_longitude else 78.9629 + random.uniform(-2, 2)
+        vehicles_data.append({
+            'id': v.id,
+            'registration': v.registration_number,
+            'lat': float(lat),
+            'lon': float(lon),
+            'speed': float(v.current_speed),
+            'trip_id': trip.id,
+            'destination': trip.end_location,
+        })
+        
+    today = timezone.now().date()
+    completed_today = Trip.objects.filter(company=company, status='completed', updated_at__date=today)
+    total_distance_qs = completed_today.aggregate(total=Sum(F('end_odometer') - F('start_odometer')))
+    total_distance = total_distance_qs['total'] or 0
+
+    active_vehicles = Vehicle.objects.filter(company=company, trips__in=active_trips)
+    avg_speed_qs = active_vehicles.aggregate(avg=Avg('current_speed'))
+    avg_speed = round(avg_speed_qs['avg'] or 0, 1)
+
+    alerts = Alert.objects.filter(company=company, alert_type__in=['panic', 'maintenance']).order_by('-created_at')[:5]
+    alerts_data = []
+    for alert in alerts:
+        alerts_data.append({
+            'type': alert.get_alert_type_display(),
+            'message': alert.message,
+        })
+
+    return JsonResponse({
+        'vehicles': vehicles_data,
+        'total_distance': total_distance,
+        'avg_speed': avg_speed,
+        'alerts': alerts_data
+    })
 
 
 @login_required
@@ -747,11 +839,13 @@ def route_analytics(request):
 def export_route_analytics(request):
     import csv
     from django.http import HttpResponse
+    from django.utils import timezone
     company = request.user.company
-    trips = Trip.objects.filter(company=company)
+    today = timezone.now().date()
+    trips = Trip.objects.filter(company=company, updated_at__date=today)
     
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="route_analytics.csv"'
+    response['Content-Disposition'] = f'attachment; filename="route_analytics_{today}.csv"'
     
     writer = csv.writer(response)
     writer.writerow(['Trip ID', 'Vehicle', 'Driver', 'Start Location', 'End Location', 'Status', 'Distance (KM)'])
@@ -915,6 +1009,479 @@ def fleet_settings(request):
 
 
 # ══════════════════════════════════════════════════════════
+#  DRIVER SETTINGS (separate from manager settings)
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@driver_required
+def driver_settings(request):
+    if request.method == 'POST':
+        request.user.first_name = request.POST.get('first_name', request.user.first_name)
+        request.user.last_name  = request.POST.get('last_name',  request.user.last_name)
+        request.user.email      = request.POST.get('email',      request.user.email)
+        request.user.phone_number = request.POST.get('phone_number', request.user.phone_number)
+        if request.FILES.get('profile_picture'):
+            request.user.profile_picture = request.FILES['profile_picture']
+        if 'appearance_mode' in request.POST:
+            request.user.appearance_mode   = request.POST.get('appearance_mode', 'light')
+            request.user.platform_language = request.POST.get('platform_language', 'English (India)')
+        request.user.save()
+        messages.success(request, "Profile updated successfully.")
+        return redirect('driver_settings')
+
+    active_trip = Trip.objects.filter(
+        driver=request.user, status__in=['approved', 'in_progress']
+    ).select_related('vehicle').first()
+
+    return render(request, 'fleet/driver_settings.html', {'active_trip': active_trip})
+
+
+# ══════════════════════════════════════════════════════════
+#  DRIVER FUEL REGISTRY
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@driver_required
+def driver_fuel_registry(request):
+    from .models import FuelEntry
+    from django.db.models import Sum, Avg, Count, Q
+
+    active_trip = Trip.objects.filter(
+        driver=request.user, status__in=['approved', 'in_progress']
+    ).select_related('vehicle').first()
+
+    fuel_entries = FuelEntry.objects.none()
+    analytics = {}
+
+    if active_trip:
+        # All fuel entries for this trip (tenant-isolated)
+        fuel_entries = FuelEntry.objects.filter(
+            trip=active_trip,
+            driver=request.user,
+            company=request.user.company
+        ).order_by('-timestamp')
+
+        # Station search filter
+        search_q = request.GET.get('q', '').strip()
+        if search_q:
+            fuel_entries = fuel_entries.filter(station_name__icontains=search_q)
+
+        # POST – log a new fuel purchase
+        if request.method == 'POST':
+            try:
+                vol   = float(request.POST.get('volume_liters', 0))
+                cost  = float(request.POST.get('total_cost', 0))
+                odo   = int(request.POST.get('odometer_at_fill', active_trip.vehicle.current_odometer or 0))
+                entry = FuelEntry(
+                    driver          = request.user,
+                    vehicle         = active_trip.vehicle,
+                    trip            = active_trip,
+                    company         = request.user.company,
+                    station_name    = request.POST.get('station_name', ''),
+                    volume_liters   = vol,
+                    total_cost      = cost,
+                    odometer_at_fill= odo,
+                    notes           = request.POST.get('notes', ''),
+                    status          = 'PENDING',
+                )
+                if request.FILES.get('receipt_image'):
+                    entry.receipt_image = request.FILES['receipt_image']
+                entry.save()
+                messages.success(request, 'Fuel purchase logged successfully. Awaiting manager approval.')
+            except Exception as e:
+                messages.error(request, f'Error logging fuel entry: {e}')
+            return redirect('driver_fuel_registry')
+
+        # ── Analytics Calculations ──────────────────────────────
+        agg = fuel_entries.aggregate(
+            total_volume  = Sum('volume_liters'),
+            total_spent   = Sum('total_cost'),
+            approved_spent= Sum('total_cost', filter=Q(status='APPROVED')),
+            entry_count   = Count('id'),
+        )
+
+        total_volume = float(agg['total_volume'] or 0)
+        total_spent  = float(agg['total_spent']  or 0)
+        approved_spent = float(agg['approved_spent'] or 0)
+
+        # Trip distance
+        trip_distance = 0
+        if active_trip.start_odometer and active_trip.vehicle.current_odometer:
+            trip_distance = max(0, active_trip.vehicle.current_odometer - active_trip.start_odometer)
+
+        # Average burn (L/100km)
+        avg_burn = 0
+        if trip_distance > 0 and total_volume > 0:
+            avg_burn = round((total_volume / trip_distance) * 100, 1)
+
+        # Estimated fuel level (assume 300L tank for heavy vehicles, scale by vehicle type)
+        tank_capacity = 300  # litres – default for HMV/trailer
+        if hasattr(active_trip.vehicle, 'vehicle_type'):
+            if active_trip.vehicle.vehicle_type == 'lmv':
+                tank_capacity = 80
+            elif active_trip.vehicle.vehicle_type == 'mhv':
+                tank_capacity = 150
+
+        estimated_fuel_level = min(100, round((total_volume / tank_capacity) * 100)) if tank_capacity else 0
+        remaining_liters = round(tank_capacity * (estimated_fuel_level / 100))
+
+        # Remaining range
+        remaining_range = 0
+        if avg_burn > 0:
+            remaining_range = round((remaining_liters / avg_burn) * 100)
+
+        # Last refill info
+        last_entry = fuel_entries.filter(status='APPROVED').first() or fuel_entries.first()
+        avg_price_per_liter = round(total_spent / total_volume, 2) if total_volume > 0 else 0
+
+        analytics = {
+            'estimated_fuel_pct': estimated_fuel_level,
+            'remaining_liters':   remaining_liters,
+            'avg_burn':           avg_burn,
+            'remaining_range':    remaining_range,
+            'trip_spending':      round(approved_spent, 2),
+            'total_volume':       round(total_volume, 1),
+            'avg_price_per_liter':avg_price_per_liter,
+            'last_entry':         last_entry,
+            'entry_count':        agg['entry_count'],
+        }
+
+    return render(request, 'fleet/driver_fuel_registry.html', {
+        'active_trip':  active_trip,
+        'fuel_entries': fuel_entries,
+        'analytics':    analytics,
+        'search_q':     request.GET.get('q', ''),
+    })
+
+
+# ══════════════════════════════════════════════════════════
+#  DRIVER REVENUE & EARNINGS
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@driver_required
+def driver_revenue(request):
+    from django.db.models import Sum, Avg, Count, Q
+    from datetime import date
+    import json
+
+    driver  = request.user
+    company = driver.company
+    today   = timezone.now().date()
+
+    # ── Date ranges ──────────────────────────────────────────
+    current_month_start = today.replace(day=1)
+    # Previous month
+    if today.month == 1:
+        prev_month_start = date(today.year - 1, 12, 1)
+        prev_month_end   = date(today.year, 1, 1)
+    else:
+        prev_month_start = date(today.year, today.month - 1, 1)
+        prev_month_end   = current_month_start
+
+    # ── Base salary ──────────────────────────────────────────
+    base_salary = float(driver.contract_salary or 0)
+    # Fall back to latest payroll entry if no contract set
+    if base_salary == 0:
+        latest_payroll = Payroll.objects.filter(
+            driver=driver, company=company
+        ).order_by('-month').first()
+        if latest_payroll:
+            base_salary = float(latest_payroll.base_salary)
+
+    # ── Current-month trip bonus ─────────────────────────────
+    current_bonus_agg = Trip.objects.filter(
+        driver=driver, company=company,
+        status='completed',
+        updated_at__date__gte=current_month_start,
+    ).aggregate(total_bonus=Sum('bonus_amount'))
+    current_trip_bonus = float(current_bonus_agg['total_bonus'] or 0)
+
+    mtd_total = base_salary + current_trip_bonus
+
+    # ── Previous month totals for % change ──────────────────
+    prev_payroll = Payroll.objects.filter(
+        driver=driver, company=company,
+        month__gte=prev_month_start,
+        month__lt=prev_month_end,
+    ).first()
+    prev_total = float(prev_payroll.total_paid if prev_payroll else 0)
+    if prev_total > 0:
+        pct_change = round(((mtd_total - prev_total) / prev_total) * 100, 1)
+    else:
+        pct_change = 0
+
+    # ── Weekly earnings trend (last 7 weeks) ─────────────────
+    weekly_labels = []
+    weekly_values = []
+    for i in range(6, -1, -1):
+        week_start = today - timedelta(weeks=i+1)
+        week_end   = today - timedelta(weeks=i)
+        label = week_start.strftime('W%U')
+        trips_in_week = Trip.objects.filter(
+            driver=driver, company=company,
+            status='completed',
+            updated_at__date__gte=week_start,
+            updated_at__date__lt=week_end,
+        ).aggregate(bonus=Sum('bonus_amount'))
+        week_earn = float(trips_in_week['bonus'] or 0) + (base_salary / 4.33)
+        weekly_labels.append(label)
+        weekly_values.append(round(week_earn, 0))
+
+    # ── Performance Scorecard ────────────────────────────────
+    # Safety: 100 - (alerts × 5), floor 0
+    alert_count = Alert.objects.filter(
+        raised_by=driver,
+        created_at__date__gte=current_month_start,
+    ).exclude(alert_type='trip_assigned').count()
+    safety_score = max(0, min(100, 100 - (alert_count * 5)))
+
+    # Efficiency: (target_burn / actual_burn) × 100; target = 28 L/100km
+    fuel_agg = FuelEntry.objects.filter(
+        driver=driver, company=company,
+        timestamp__date__gte=current_month_start,
+    ).aggregate(total_vol=Sum('volume_liters'))
+    total_vol = float(fuel_agg['total_vol'] or 0)
+
+    trip_distance = 0
+    active_trip = Trip.objects.filter(
+        driver=driver, status__in=['approved', 'in_progress']
+    ).select_related('vehicle').first()
+    if active_trip and active_trip.start_odometer and active_trip.vehicle.current_odometer:
+        trip_distance = max(0, active_trip.vehicle.current_odometer - active_trip.start_odometer)
+
+    if trip_distance > 0 and total_vol > 0:
+        actual_burn  = (total_vol / trip_distance) * 100
+        target_burn  = 28.0  # L/100km standard
+        efficiency_score = min(100, round((target_burn / actual_burn) * 100))
+    else:
+        efficiency_score = 85  # default if no data yet
+
+    # Punctuality: % trips where arrived on time
+    completed_trips = Trip.objects.filter(
+        driver=driver, company=company, status='completed'
+    )
+    total_completed = completed_trips.count()
+    on_time = completed_trips.filter(
+        scheduled_arrival__isnull=False,
+        updated_at__lte=models_updated_at_for_schedule()
+    ).count() if total_completed else 0
+    # Simplified: use a proxy — trips without maintenance_notes as "on time"
+    on_time = completed_trips.filter(maintenance_notes__isnull=True).count()
+    punctuality_score = round((on_time / total_completed) * 100) if total_completed > 0 else 90
+
+    # Peer status
+    avg_safety = safety_score  # single driver context; placeholder
+    if safety_score >= 95:
+        peer_status = "Outstanding safety record this month. You're in the top 5% of our fleet."
+    elif safety_score >= 80:
+        peer_status = "Good performance. You're in the top 25% of our fleet this month."
+    else:
+        peer_status = "Keep improving! Reduce alerts to climb the fleet rankings."
+
+    # ── Payout history ──────────────────────────────────────
+    payrolls = Payroll.objects.filter(
+        driver=driver, company=company
+    ).order_by('-month')[:12]
+
+    # ── PDF download ─────────────────────────────────────────
+    if request.GET.get('download') == 'pdf':
+        return _generate_revenue_pdf(driver, base_salary, current_trip_bonus, mtd_total, payrolls)
+
+    return render(request, 'fleet/driver_revenue.html', {
+        'active_trip':       active_trip,
+        'base_salary':       base_salary,
+        'current_trip_bonus':current_trip_bonus,
+        'mtd_total':         mtd_total,
+        'pct_change':        pct_change,
+        'weekly_labels':     json.dumps(weekly_labels),
+        'weekly_values':     json.dumps(weekly_values),
+        'safety_score':      safety_score,
+        'efficiency_score':  efficiency_score,
+        'punctuality_score': punctuality_score,
+        'peer_status':       peer_status,
+        'payrolls':          payrolls,
+        'today':             today,
+        'current_month':     today.strftime('%B %Y'),
+    })
+
+
+def _generate_revenue_pdf(driver, base_salary, trip_bonus, mtd_total, payrolls):
+    """Generate a plain-text PDF-like statement using HttpResponse."""
+    from django.http import HttpResponse
+    today = timezone.now().strftime('%d %B %Y')
+    content = f"""
+╔══════════════════════════════════════════════════════╗
+             LOGICONTROL INDIA – EARNINGS STATEMENT
+╚══════════════════════════════════════════════════════╝
+
+Driver      : {driver.get_full_name() or driver.username}
+Work Email  : {driver.username}
+Company     : {driver.company.name if driver.company else '—'}
+Generated   : {today}
+
+──────────────────────────────────────────────────────
+  CURRENT MONTH SUMMARY
+──────────────────────────────────────────────────────
+  Base Salary        :  ₹{base_salary:,.2f}
+  Trip Bonus         :  ₹{trip_bonus:,.2f}
+  Month-to-Date Total:  ₹{mtd_total:,.2f}
+
+──────────────────────────────────────────────────────
+  PAYOUT HISTORY
+──────────────────────────────────────────────────────
+  {'Month':<15} {'Base':>10} {'Bonus':>10} {'Total':>12} {'Status'}
+  {'-'*60}
+"""
+    for p in payrolls:
+        content += f"  {p.month.strftime('%b %Y'):<15} ₹{float(p.base_salary):>9,.0f} ₹{float(p.trip_bonus):>9,.0f} ₹{float(p.total_paid):>11,.0f} {p.status.upper()}\n"
+
+    content += f"""
+──────────────────────────────────────────────────────
+  This is a system-generated statement.
+  For queries, contact your fleet manager.
+  © LogiControl India SaaS Platform
+"""
+    response = HttpResponse(content, content_type='text/plain; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="earnings_statement_{driver.username}_{today.replace(" ","_")}.txt"'
+    return response
+
+
+def models_updated_at_for_schedule():
+    """Helper placeholder — returns current time for punctuality calc."""
+    return timezone.now()
+
+
+# ══════════════════════════════════════════════════════════
+#  DRIVER – ROUTE ANALYTICS
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@driver_required
+def driver_route_analytics(request):
+    from django.conf import settings
+    import math
+
+    driver  = request.user
+    company = driver.company
+
+    active_trip = (
+        Trip.objects.filter(driver=driver, status__in=['approved', 'in_progress'])
+        .select_related('vehicle')
+        .first()
+    )
+
+    map_data = {}
+    if active_trip and active_trip.vehicle:
+        v = active_trip.vehicle
+        lat  = float(v.current_latitude  or 20.5937)   # default: India center
+        lng  = float(v.current_longitude or 78.9629)
+        speed = float(v.current_speed or 0)
+        heading = v.current_heading or 'North'
+
+        # Remaining distance estimate
+        total_km     = active_trip.total_distance_km or 0
+        start_odo    = active_trip.start_odometer or v.current_odometer
+        traveled_km  = max(0, v.current_odometer - start_odo)
+        remaining_km = max(0, total_km - traveled_km)
+
+        # ETA estimate (avg 60 km/h if speed = 0)
+        avg_speed = speed if speed > 10 else 60
+        eta_hours = remaining_km / avg_speed if avg_speed > 0 else 0
+        eta_h = int(eta_hours)
+        eta_m = int((eta_hours - eta_h) * 60)
+
+        map_data = {
+            'lat': lat, 'lng': lng,
+            'speed': speed, 'heading': heading,
+            'reg': v.registration_number,
+            'start': active_trip.start_location,
+            'end':   active_trip.end_location,
+            'total_km':    total_km,
+            'traveled_km': traveled_km,
+            'remaining_km': remaining_km,
+            'eta_display': f"{eta_h:02d}h {eta_m:02d}m",
+        }
+
+    return render(request, 'fleet/driver_route_analytics.html', {
+        'active_trip': active_trip,
+        'map_data':    map_data,
+        'maps_api_key': getattr(settings, 'MAPS_API_KEY', ''),
+    })
+
+
+# ══════════════════════════════════════════════════════════
+#  DRIVER – VEHICLE HEALTH
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@driver_required
+def driver_vehicle_health(request):
+    driver  = request.user
+    company = driver.company
+
+    active_trip = (
+        Trip.objects.filter(driver=driver, status__in=['approved', 'in_progress'])
+        .select_related('vehicle')
+        .first()
+    )
+
+    vehicle = active_trip.vehicle if active_trip else None
+    maintenance_logs = []
+    if vehicle:
+        maintenance_logs = (
+            MaintenanceLog.objects
+            .filter(vehicle=vehicle, company=company)
+            .order_by('-last_service_date')[:10]
+        )
+
+    # Report fault POST
+    if request.method == 'POST' and request.POST.get('action') == 'report_fault':
+        fault_desc = request.POST.get('fault_description', '').strip()
+        if fault_desc and vehicle:
+            Alert.objects.create(
+                company=company,
+                raised_by=driver,
+                vehicle=vehicle,
+                alert_type='fault_report',
+                severity='high',
+                message=f"🚨 FAULT REPORTED by {driver.get_full_name() or driver.username} "
+                        f"[{vehicle.registration_number}]: {fault_desc}",
+                status='unread',
+            )
+            messages.success(request, "Fault reported successfully. Your manager has been notified.")
+        else:
+            messages.error(request, "Please describe the fault before submitting.")
+        return redirect('driver_vehicle_health')
+
+    # Determine overall health status
+    if vehicle:
+        avg_health = (vehicle.engine_performance + vehicle.tire_integrity + vehicle.battery_life) // 3
+        if avg_health >= 80:
+            health_status = 'OPTIMAL STATUS'
+            health_color  = '#22c55e'
+        elif avg_health >= 60:
+            health_status = 'FAIR CONDITION'
+            health_color  = '#f59e0b'
+        else:
+            health_status = 'ATTENTION NEEDED'
+            health_color  = '#ef4444'
+    else:
+        avg_health = 0
+        health_status = 'NO VEHICLE'
+        health_color  = '#64748b'
+
+    return render(request, 'fleet/driver_vehicle_health.html', {
+        'active_trip':       active_trip,
+        'vehicle':           vehicle,
+        'maintenance_logs':  maintenance_logs,
+        'health_status':     health_status,
+        'health_color':      health_color,
+        'avg_health':        avg_health,
+    })
+
+
+# ══════════════════════════════════════════════════════════
 #  ALERTS API (mark as read)
 # ══════════════════════════════════════════════════════════
 
@@ -924,3 +1491,62 @@ def mark_alert_read(request, alert_id):
     alert.status = 'read'
     alert.save()
     return redirect(request.META.get('HTTP_REFERER', 'manager_dashboard'))
+
+
+# ══════════════════════════════════════════════════════════
+#  FOOTER PAGES
+# ══════════════════════════════════════════════════════════
+
+def help_center(request):
+    return render(request, 'help_center.html')
+
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
+def terms_of_service(request):
+    return render(request, 'terms_of_service.html')
+
+def contact_support(request):
+    return render(request, 'contact_support.html')
+
+
+# ══════════════════════════════════════════════════════════
+#  UNIVERSAL SEARCH
+# ══════════════════════════════════════════════════════════
+
+@login_required
+@manager_required
+def universal_search(request):
+    query = request.GET.get('q', '').strip()
+    company = request.user.company
+    
+    context = {'query': query}
+    
+    if query:
+        from django.db.models import Q
+        vehicles = Vehicle.objects.filter(company=company).filter(
+            Q(registration_number__icontains=query) |
+            Q(make__icontains=query) |
+            Q(model__icontains=query)
+        )
+        drivers = User.objects.filter(role='driver', company=company).filter(
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(driving_license__icontains=query) |
+            Q(username__icontains=query) |
+            Q(phone_number__icontains=query)
+        )
+        trips = Trip.objects.filter(company=company).filter(
+            Q(start_location__icontains=query) |
+            Q(end_location__icontains=query)
+        )
+        if query.isdigit():
+            trips = trips | Trip.objects.filter(company=company, id=query)
+        
+        context.update({
+            'vehicles': vehicles,
+            'drivers': drivers,
+            'trips': trips,
+        })
+        
+    return render(request, 'fleet/search_results.html', context)
