@@ -1,0 +1,117 @@
+{% extends 'enterprise_base.html' %}
+
+{% block title %}Fuel Insights - {{ vehicle.registration_number }}{% endblock %}
+
+{% block enterprise_content %}
+<div class="mb-4">
+    <a href="{% url 'fleet_registry' %}" class="text-decoration-none text-muted small fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Back to Fleet Registry
+    </a>
+    <h2 class="fw-bold mt-2 text-dark">Fuel Insights: {{ vehicle.registration_number }}</h2>
+    <p class="text-muted">Lifetime fuel consumption and efficiency metrics for {{ vehicle.make }} {{ vehicle.model }}.</p>
+</div>
+
+<!-- Key Metrics -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4 text-center">
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px;">
+                    <i class="bi bi-signpost-2 fs-3"></i>
+                </div>
+                <div class="text-muted small fw-bold text-uppercase">Total Distance Logged</div>
+                <h3 class="fw-bold text-dark mt-2 mb-0">{{ total_distance_overall }} km</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4 text-center">
+                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px;">
+                    <i class="bi bi-fuel-pump fs-3"></i>
+                </div>
+                <div class="text-muted small fw-bold text-uppercase">Total Fuel Consumed</div>
+                <h3 class="fw-bold text-dark mt-2 mb-0">{{ total_fuel_overall }} L</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4 text-center">
+                <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px;">
+                    <i class="bi bi-cash-stack fs-3"></i>
+                </div>
+                <div class="text-muted small fw-bold text-uppercase">Total Fuel Cost</div>
+                <h3 class="fw-bold text-dark mt-2 mb-0">₹ {{ total_money_overall }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4 text-center">
+                <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px;">
+                    <i class="bi bi-speedometer fs-3"></i>
+                </div>
+                <div class="text-muted small fw-bold text-uppercase">Avg Efficiency</div>
+                <h3 class="fw-bold text-dark mt-2 mb-0">{{ overall_efficiency }} km/L</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Trip Log -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+        <h5 class="fw-bold text-dark"><i class="bi bi-card-list text-primary me-2"></i>Trip-by-Trip Fuel Log</h5>
+    </div>
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light text-muted small fw-bold text-uppercase">
+                    <tr>
+                        <th>Trip Route</th>
+                        <th>Distance (km)</th>
+                        <th>Fuel Consumed (L)</th>
+                        <th>Total Cost (₹)</th>
+                        <th>Efficiency (km/L)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in insights %}
+                    <tr>
+                        <td>
+                            <div class="fw-bold text-primary">LC-{{ item.trip.id }}</div>
+                            <div class="small text-muted">{{ item.trip.start_location }} → {{ item.trip.end_location }}</div>
+                        </td>
+                        <td class="fw-bold text-dark">{{ item.distance }}</td>
+                        <td>
+                            {% if item.total_fuel > 0 %}
+                            <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1"><i class="bi bi-droplet-fill me-1"></i>{{ item.total_fuel }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-danger">{% if item.total_money > 0 %}₹ {{ item.total_money }}{% else %}—{% endif %}</td>
+                        <td>
+                            {% if item.efficiency > 0 %}
+                            <span class="fw-bold text-success">{{ item.efficiency }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            No completed trips with fuel logs found for this vehicle.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

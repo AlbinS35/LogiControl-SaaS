@@ -1,0 +1,115 @@
+{% extends 'enterprise_base.html' %}
+
+{% block title %}LogiLoop Backhaul Matcher{% endblock %}
+
+{% block enterprise_content %}
+<div class="mb-4">
+    <a href="{% url 'trip_allocation' %}" class="text-decoration-none text-muted small fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Back to Allocation
+    </a>
+    <h2 class="fw-bold mt-2 text-dark">LogiLoop Exchange</h2>
+    <p class="text-muted">Find profitable backhauls for outbound trip LC-{{ trip.id }} ({{ trip.start_location }} → {{ trip.end_location }})</p>
+</div>
+
+<!-- Outbound Trip Summary -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(to right, #ffffff, #f8fafc);">
+    <div class="card-body p-4">
+        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-truck text-primary me-2"></i>Outbound Trip Details</h5>
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <div class="text-muted small fw-bold text-uppercase">Vehicle</div>
+                <div class="fw-bold fs-5">{{ trip.vehicle.registration_number }}</div>
+                <div class="text-muted small">{{ trip.vehicle.get_vehicle_type_display }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small fw-bold text-uppercase">Origin</div>
+                <div class="fw-bold"><i class="bi bi-geo-alt text-primary me-1"></i>{{ trip.start_location }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small fw-bold text-uppercase">Destination</div>
+                <div class="fw-bold"><i class="bi bi-flag text-danger me-1"></i>{{ trip.end_location }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-muted small fw-bold text-uppercase">Distance</div>
+                <div class="fw-bold text-primary">{{ trip.total_distance_km|default:"—" }} km</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="fw-bold text-dark mb-3"><i class="bi bi-radar text-success me-2"></i>Available Backhauls (60km Radius)</h4>
+
+<div class="row g-4">
+    {% for match in matching_loads %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 h-100 position-relative">
+            {% if match.match_type == 'Internal' %}
+            <span class="position-absolute top-0 end-0 badge bg-success m-3">Internal</span>
+            {% else %}
+            <span class="position-absolute top-0 end-0 badge bg-primary m-3">Cross-Tenant</span>
+            {% endif %}
+            <div class="card-body p-4">
+                <div class="text-muted small fw-bold text-uppercase mb-2">Distance from Drop-off</div>
+                <h3 class="fw-bold text-success mb-3">{{ match.distance }} km</h3>
+                
+                <div class="mb-3">
+                    <div class="text-muted small fw-bold text-uppercase">Cargo</div>
+                    <div class="fw-bold text-dark">{{ match.load.cargo_type }} ({{ match.load.weight_tons }}t)</div>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="text-muted small fw-bold text-uppercase">Provider</div>
+                    <div class="fw-bold text-dark">{{ match.load.origin_company.name }}</div>
+                </div>
+                
+                <!-- Profitability Simulator -->
+                <div class="bg-light rounded-3 p-3 mb-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small fw-bold">Est. Revenue</span>
+                        <span class="fw-bold text-success">₹ {{ match.total_revenue|floatformat:2 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small fw-bold">Est. Fuel Cost</span>
+                        <span class="fw-bold text-danger">- ₹ {{ match.fuel_cost|floatformat:2 }}</span>
+                    </div>
+                    {% if match.match_type == 'Cross-Tenant' %}
+                    <div class="d-flex justify-content-between border-top pt-2 mt-2">
+                        <span class="text-muted small fw-bold">Platform Fee (5%)</span>
+                        <span class="fw-bold text-warning">- ₹ {{ match.platform_fee|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between border-top pt-2 mt-2">
+                        <span class="fw-bold text-dark">Loop ROI</span>
+                        <span class="fw-bold {% if match.net_profit < 0 %}text-danger{% else %}text-success{% endif %} fs-5">
+                            ₹ {{ match.net_profit|floatformat:2 }}
+                        </span>
+                    </div>
+                </div>
+                
+                <form method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="load_id" value="{{ match.load.id }}">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold rounded-pill shadow-sm" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none;">
+                        Accept & Create Loop
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 text-center py-5">
+            <i class="bi bi-search text-muted" style="font-size: 3rem;"></i>
+            <h5 class="fw-bold text-dark mt-3">No backhauls found</h5>
+            <p class="text-muted">There are no matching loads within a 60km radius of {{ trip.end_location }}.</p>
+            <form method="POST" action="{% url 'trip_allocation' %}">
+                {% csrf_token %}
+                <input type="hidden" name="trip_id" value="{{ trip.id }}">
+                <input type="hidden" name="action" value="override_dispatch">
+                <button type="submit" class="btn btn-outline-danger mt-2 fw-bold">Override & Dispatch Empty</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

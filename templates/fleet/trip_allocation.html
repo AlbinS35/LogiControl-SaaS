@@ -154,10 +154,19 @@
                             </div>
                             {% endif %}
                         </div>
+                        {% if trip.total_distance_km and trip.total_distance_km > 150 and trip.status == 'pending' %}
+                        <div class="d-flex gap-3 align-items-center">
+                            <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1"><i class="bi bi-lock-fill me-1"></i>Dispatch Locked</span>
+                            <a href="{% url 'logiloop_matcher' trip.id %}" class="btn btn-sm btn-primary fw-bold px-3 shadow-sm" style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none;">
+                                <i class="bi bi-arrow-repeat me-1"></i>Find Backhaul
+                            </a>
+                        </div>
+                        {% else %}
                         <a href="#" class="text-primary fw-bold text-decoration-none small"
                            data-bs-toggle="modal" data-bs-target="#assignDriverModal{{ trip.id }}">
                             Assign Driver <i class="bi bi-person-plus ms-1"></i>
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -11,7 +11,7 @@ urlpatterns = [
         template_name='registration/login.html',
         redirect_authenticated_user=True
     ), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
+    path('logout/', views.custom_logout, name='logout'),
     path('signup/', views.owner_signup, name='owner_signup'),
     
     # ── Footer Links ─────────────────────────────
@@ -64,9 +64,11 @@ urlpatterns = [
     path('directory/vehicles/', views.vehicle_directory, name='vehicle_directory'),
     path('directory/drivers/', views.driver_directory, name='driver_directory'),
     path('vehicle/<int:vehicle_id>/status/', views.vehicle_status_update, name='vehicle_status_update'),
+    path('vehicle/<int:vehicle_id>/fuel-insights/', views.vehicle_fuel_insights, name='vehicle_fuel_insights'),
 
     # ── Manager – Trips ───────────────────────────────────
     path('trip-allocation/', views.trip_allocation, name='trip_allocation'),
+    path('logiloop/<int:trip_id>/', views.logiloop_matcher, name='logiloop_matcher'),
     path('route-analytics/', views.route_analytics, name='route_analytics'),
     path('route-analytics/export/', views.export_route_analytics, name='export_route_analytics'),
     path('api/telemetry/', views.api_telemetry, name='api_telemetry'),

@@ -183,6 +183,9 @@
                     
                     <!-- Actions -->
                     <div class="d-flex gap-2">
+                        <a href="{% url 'vehicle_fuel_insights' vehicle.id %}" class="btn btn-light border text-muted" title="Fuel Insights">
+                            <i class="bi bi-fuel-pump"></i>
+                        </a>
                         <button class="btn btn-light border text-muted" title="Maintenance History"
                                 data-bs-toggle="modal" data-bs-target="#maintModal{{ vehicle.id }}">
                             <i class="bi bi-wrench-adjustable"></i>

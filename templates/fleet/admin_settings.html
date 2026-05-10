@@ -1,194 +1,130 @@
 {% extends 'fleet/admin_base.html' %}
 
-{% block title %}Settings - LogiControl{% endblock %}
-
-{% block header_button %}
-<button type="submit" form="settingsForm" class="btn-primary-custom"><i class="bi bi-floppy"></i> Save Changes</button>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    .page-title { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.3rem; }
-    .page-sub { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem; }
-
-    .panel { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
-    .panel-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; }
-    .panel-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; }
-    .panel-icon.blue { background: #2563eb; }
-    .panel-icon.green { background: #16a34a; }
-    .panel-title { font-size: 1.2rem; font-weight: 800; color: var(--text-main); margin: 0; }
-
-    .form-group { margin-bottom: 1.5rem; }
-    .form-label { font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: block; }
-    .custom-select { 
-        width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: 6px; 
-        background: white; font-size: 0.85rem; color: var(--text-main); appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; background-position: right 1rem center; outline: none;
-    }
-    .custom-select:focus { border-color: #2563eb; }
-
-    .notification-item { background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 6px; padding: 1.2rem 1.5rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .notification-item:last-child { margin-bottom: 0; }
-    .notif-title { font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin-bottom: 0.2rem; }
-    .notif-desc { font-size: 0.75rem; color: var(--text-muted); margin: 0; }
-
-    .toggle-switch { width: 44px; height: 24px; border-radius: 12px; background: #cbd5e1; position: relative; cursor: pointer; transition: 0.2s; }
-    .toggle-switch.active { background: #2563eb; }
-    .toggle-knob { width: 18px; height: 18px; border-radius: 50%; background: white; position: absolute; top: 3px; left: 3px; transition: 0.2s;}
-    .toggle-switch.active .toggle-knob { left: 23px; }
-
-    /* Super Admins Panel */
-    .admin-panel { background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; height: 100%; display: flex; flex-direction: column;}
-    .admin-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: white; border-radius: 8px 8px 0 0;}
-    .admin-title { font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 0.5rem;}
-    .btn-icon { width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: var(--primary); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: background 0.2s;}
-    .btn-icon:hover { background: #cbd5e1; }
-    
-    .admin-list { padding: 0; margin: 0; list-style: none; flex-grow: 1; background: white;}
-    .admin-item { padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
-    .admin-info-wrap { display: flex; align-items: center; gap: 1rem; }
-    .admin-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-    .admin-avatar-text { width: 40px; height: 40px; border-radius: 50%; background: #2563eb; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;}
-    .admin-name { font-weight: 700; font-size: 0.85rem; color: var(--text-main); margin: 0; }
-    .admin-role { font-size: 0.7rem; color: var(--text-muted); margin: 0; }
-    .badge-root { background: #e2e8f0; color: #475569; font-size: 0.6rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 1px;}
-    
-    .admin-footer { padding: 1.2rem; text-align: center; border-top: 1px solid var(--border-color); background: white; border-radius: 0 0 8px 8px;}
-    .link-audit { font-size: 0.8rem; font-weight: 600; color: #2563eb; text-decoration: none; }
-</style>
-{% endblock %}
+{% block title %}Exchange Settings - LogiControl India{% endblock %}
 
 {% block content %}
-<div>
-    <h1 class="page-title">Global Settings</h1>
-    <p class="page-sub">Manage platform-wide configurations and administrative access.</p>
-</div>
-
-{% if messages %}
-<div class="mb-3">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert" style="background-color: #dcfce7; color: #166534; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #86efac; display: flex; justify-content: space-between; align-items: center;">
-        {{ message }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: #166534;">&times;</button>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-1">Exchange Settings</h2>
+        <p class="text-muted mb-0">Manage LogiLoop Exchange commission rates and monitor financial settlements.</p>
     </div>
-    {% endfor %}
 </div>
-{% endif %}
 
-<form id="settingsForm" method="POST" action="{% url 'admin_settings' %}">
-    {% csrf_token %}
 <div class="row g-4">
-    <div class="col-md-8">
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-icon blue"><i class="bi bi-globe"></i></div>
-                <h3 class="panel-title">Platform Preferences</h3>
+    <!-- Settings Form -->
+    <div class="col-lg-4">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                <h5 class="fw-bold text-dark"><i class="bi bi-gear text-primary me-2"></i>Global Configuration</h5>
             </div>
-            
-            <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;"></div>
-            
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Default Currency</label>
-                        <select class="custom-select">
-                            <option>INR - Indian Rupee (₹)</option>
-                            <option>USD - US Dollar ($)</option>
-                        </select>
+            <div class="card-body p-4">
+                <form method="POST" action="{% url 'admin_settings' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="update_settings" value="1">
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Standard Commission Rate (%)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" class="form-control" name="exchange_commission_rate" value="{{ settings.exchange_commission_rate|default:'5.00' }}" required>
+                            <span class="input-group-text bg-light">%</span>
+                        </div>
+                        <div class="form-text small">Applied to general cross-tenant load matches.</div>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">System Language</label>
-                        <select class="custom-select">
-                            <option>English (US)</option>
-                            <option>Hindi (IN)</option>
-                        </select>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Heavy Asset Rate (%)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" class="form-control" name="heavy_asset_commission_rate" value="{{ settings.heavy_asset_commission_rate|default:'3.00' }}" required>
+                            <span class="input-group-text bg-light">%</span>
+                        </div>
+                        <div class="form-text small">Discounted rate for Torus and Trailers to encourage volume.</div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="form-group" style="margin-bottom: 0;">
-                <label class="form-label">Timezone</label>
-                <select class="custom-select">
-                    <option>(UTC+05:30) Asia/Kolkata</option>
-                    <option>(UTC+00:00) UTC</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="panel mb-0">
-            <div class="panel-header">
-                <div class="panel-icon green"><i class="bi bi-bell-fill"></i></div>
-                <h3 class="panel-title">Global Notifications</h3>
-            </div>
-            
-            <div style="border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem;"></div>
-            
-            <div class="notification-item">
-                <div>
-                    <p class="notif-title">Critical System Alerts</p>
-                    <p class="notif-desc">Downtime, security breaches, server issues.</p>
-                </div>
-                <div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="toggle-knob"></div></div>
-            </div>
-            
-            <div class="notification-item" style="margin-bottom: 0;">
-                <div>
-                    <p class="notif-title">Fleet Incident Reports</p>
-                    <p class="notif-desc">Accidents, extreme delays, route deviations.</p>
-                </div>
-                <div class="toggle-switch active" onclick="this.classList.toggle('active')"><div class="toggle-knob"></div></div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Flat Transaction Fee (₹)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">₹</span>
+                            <input type="number" step="0.01" class="form-control" name="flat_transaction_fee" value="{{ settings.flat_transaction_fee|default:'0.00' }}" required>
+                        </div>
+                        <div class="form-text small">Added to every match regardless of percentage.</div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enableMatching" name="enable_cross_tenant_matching" {% if settings.enable_cross_tenant_matching %}checked{% endif %}>
+                            <label class="form-check-label fw-bold text-dark ms-2" for="enableMatching">Enable Cross-Tenant Matching</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
+                        Save Configuration
+                    </button>
+                </form>
             </div>
         </div>
     </div>
     
-    <div class="col-md-4">
-        <div class="admin-panel">
-            <div class="admin-header">
-                <h3 class="admin-title"><i class="bi bi-shield-lock text-primary"></i> Super Admins</h3>
-                <button class="btn-icon"><i class="bi bi-plus-lg"></i></button>
+    <!-- Financial Monitoring Dashboard -->
+    <div class="col-lg-8">
+        <div class="card card-custom h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                <h5 class="fw-bold text-dark"><i class="bi bi-graph-up-arrow text-success me-2"></i>Financial Monitoring Dashboard</h5>
             </div>
-            
-            <ul class="admin-list">
-                <li class="admin-item">
-                    <div class="admin-info-wrap">
-                        <img src="https://ui-avatars.com/api/?name=Vikram+Sharma&background=0f172a&color=fff" class="admin-avatar">
-                        <div>
-                            <p class="admin-name">Vikram Sharma</p>
-                            <p class="admin-role">Owner</p>
-                        </div>
-                    </div>
-                    <span class="badge-root">ROOT</span>
-                </li>
-                
-                <li class="admin-item">
-                    <div class="admin-info-wrap">
-                        <div class="admin-avatar-text">AP</div>
-                        <div>
-                            <p class="admin-name">Ananya Patel</p>
-                            <p class="admin-role">Operations Lead</p>
-                        </div>
-                    </div>
-                </li>
-                
-                <li class="admin-item" style="border-bottom: none;">
-                    <div class="admin-info-wrap">
-                        <img src="https://ui-avatars.com/api/?name=Rohan+Desai&background=0891b2&color=fff" class="admin-avatar">
-                        <div>
-                            <p class="admin-name">Rohan Desai</p>
-                            <p class="admin-role">IT Security</p>
-                        </div>
-                    </div>
-                </li>
-            </ul>
-            
-            <div class="admin-footer">
-                <a href="#" class="link-audit">View Audit Logs <i class="bi bi-arrow-right"></i></a>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light text-muted small fw-bold text-uppercase">
+                            <tr>
+                                <th>Loop ID</th>
+                                <th>Carrier (Outbound)</th>
+                                <th>Load Owner (Return)</th>
+                                <th>Combined Rev</th>
+                                <th>SaaS Revenue</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trip in linked_trips %}
+                            <tr>
+                                <td class="fw-bold text-primary">LL-{{ trip.id }}</td>
+                                <td>{{ trip.outbound_trip.company.name|default:"—" }}</td>
+                                <td>{{ trip.return_trip.company.name|default:"—" }}</td>
+                                <td class="fw-bold">₹ {{ trip.combined_revenue|floatformat:2 }}</td>
+                                <td class="fw-bold text-success">₹ {{ trip.platform_commission|floatformat:2 }}</td>
+                                <td>
+                                    {% if trip.settlement_status == 'PAID' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">PAID</span>
+                                    {% else %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">PENDING</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if trip.settlement_status == 'PENDING' %}
+                                    <form method="POST" action="{% url 'admin_settings' %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="mark_paid" value="1">
+                                        <input type="hidden" name="linked_trip_id" value="{{ trip.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-success fw-bold">Mark Paid</button>
+                                    </form>
+                                    {% else %}
+                                    <span class="text-muted small"><i class="bi bi-check-circle-fill text-success me-1"></i>Settled</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                    No linked loops generated yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
-</form>
 {% endblock %}

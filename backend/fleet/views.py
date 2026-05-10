@@ -59,6 +59,10 @@ def resources(request):
     return render(request, 'resources.html')
 
 
+from django.views.decorators.cache import never_cache
+from django.contrib.auth import logout as auth_logout
+
+@never_cache
 @login_required
 def dashboard_redirect(request):
     if request.user.is_admin():
@@ -68,6 +72,17 @@ def dashboard_redirect(request):
     elif request.user.is_driver():
         return redirect('driver_dashboard')
     return redirect('login')
+
+@never_cache
+def custom_logout(request):
+    """Ensure the user is fully logged out and session is cleared, even on GET for convenience or POST."""
+    auth_logout(request)
+    request.session.flush()
+    response = redirect('home')
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 def owner_signup(request):
@@ -229,10 +244,33 @@ def admin_support_tickets(request):
 @login_required
 @admin_required
 def admin_settings(request):
+    from .models import GlobalSettings, LinkedTrip
+    settings_obj, created = GlobalSettings.objects.get_or_create(id=1)
+    
     if request.method == 'POST':
-        messages.success(request, "Global settings updated successfully.")
+        if 'update_settings' in request.POST:
+            settings_obj.exchange_commission_rate = request.POST.get('exchange_commission_rate', settings_obj.exchange_commission_rate)
+            settings_obj.heavy_asset_commission_rate = request.POST.get('heavy_asset_commission_rate', settings_obj.heavy_asset_commission_rate)
+            settings_obj.flat_transaction_fee = request.POST.get('flat_transaction_fee', settings_obj.flat_transaction_fee)
+            settings_obj.enable_cross_tenant_matching = request.POST.get('enable_cross_tenant_matching') == 'on'
+            settings_obj.save()
+            messages.success(request, "Exchange Settings updated successfully.")
+        elif 'mark_paid' in request.POST:
+            trip_id = request.POST.get('linked_trip_id')
+            trip = get_object_or_404(LinkedTrip, id=trip_id)
+            trip.settlement_status = 'PAID'
+            trip.save()
+            messages.success(request, f"Settlement for Loop #{trip.id} marked as Paid.")
         return redirect('admin_settings')
-    return render(request, 'fleet/admin_settings.html')
+        
+    linked_trips = LinkedTrip.objects.select_related(
+        'outbound_trip__company', 'return_trip__company'
+    ).order_by('-id')
+    
+    return render(request, 'fleet/admin_settings.html', {
+        'settings': settings_obj,
+        'linked_trips': linked_trips
+    })
 
 # ══════════════════════════════════════════════════════════
 #  MANAGER DASHBOARD
@@ -579,6 +617,55 @@ def fleet_registry(request):
     }
     return render(request, 'fleet/fleet_registry.html', context)
 
+@login_required
+@manager_required
+def vehicle_fuel_insights(request, vehicle_id):
+    vehicle = get_object_or_404(Vehicle, id=vehicle_id, company=request.user.company)
+    trips = Trip.objects.filter(vehicle=vehicle, status='completed').prefetch_related('fuel_entries').order_by('-updated_at')
+    
+    insights = []
+    total_fuel_overall = 0
+    total_money_overall = 0
+    total_distance_overall = 0
+    
+    for trip in trips:
+        entries = trip.fuel_entries.filter(status='APPROVED')
+        total_fuel = sum(entry.volume_liters for entry in entries)
+        total_money = sum(entry.total_cost for entry in entries)
+        
+        # Determine trip distance
+        if trip.total_distance_km:
+            dist = float(trip.total_distance_km)
+        elif trip.end_odometer and trip.start_odometer:
+            dist = float(trip.end_odometer - trip.start_odometer)
+        else:
+            dist = 0
+            
+        efficiency = (dist / float(total_fuel)) if total_fuel > 0 else 0
+        
+        insights.append({
+            'trip': trip,
+            'total_fuel': round(float(total_fuel), 2),
+            'total_money': round(float(total_money), 2),
+            'distance': dist,
+            'efficiency': round(efficiency, 2)
+        })
+        
+        total_fuel_overall += float(total_fuel)
+        total_money_overall += float(total_money)
+        total_distance_overall += dist
+        
+    overall_efficiency = (total_distance_overall / total_fuel_overall) if total_fuel_overall > 0 else 0
+    
+    context = {
+        'vehicle': vehicle,
+        'insights': insights,
+        'total_fuel_overall': round(total_fuel_overall, 2),
+        'total_money_overall': round(total_money_overall, 2),
+        'overall_efficiency': round(overall_efficiency, 2),
+        'total_distance_overall': round(total_distance_overall, 2)
+    }
+    return render(request, 'fleet/vehicle_fuel_insights.html', context)
 
 # ══════════════════════════════════════════════════════════
 #  DRIVER MANAGEMENT (Manager side)
@@ -698,10 +785,15 @@ def trip_allocation(request):
             if form.is_valid():
                 trip = form.save(commit=False)
                 trip.company = company
-                if trip.driver:
-                    trip.status = 'approved'
-                else:
+                if trip.total_distance_km and trip.total_distance_km > 150:
                     trip.status = 'pending'
+                    if trip.driver:
+                        messages.warning(request, "Trip exceeds 150km. Dispatch is locked until a backhaul is secured.")
+                else:
+                    if trip.driver:
+                        trip.status = 'approved'
+                    else:
+                        trip.status = 'pending'
                 
                 trip.save()  # Must save the trip first to generate an ID
                 
@@ -1550,3 +1642,145 @@ def universal_search(request):
         })
         
     return render(request, 'fleet/search_results.html', context)
+
+
+# ══════════════════════════════════════════════════════════
+#  LOGILOOP EXCHANGE (Cross-Tenant Backhaul)
+# ══════════════════════════════════════════════════════════
+
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    """Calculate the great-circle distance between two points on Earth."""
+    R = 6371  # Earth radius in kilometers
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat/2) * math.sin(dLat/2) + \
+        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * \
+        math.sin(dLon/2) * math.sin(dLon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+@login_required
+@manager_required
+def logiloop_matcher(request, trip_id):
+    from .models import GlobalLoadPool, LinkedTrip
+    trip = get_object_or_404(Trip, id=trip_id, company=request.user.company)
+    
+    # Destination coordinates (mocking for Theni based on prompt context, 
+    # in production this would be geocoded from trip.end_location)
+    dest_lat = float(request.GET.get('lat', 10.0104)) 
+    dest_lon = float(request.GET.get('lon', 77.4768)) 
+    
+    vehicle_type = trip.vehicle.vehicle_type
+    
+    # Fetch all visible loads
+    all_pool_loads = GlobalLoadPool.objects.filter(is_fulfilled=False).filter(
+        Q(visibility='PUBLIC') | 
+        Q(origin_company=request.user.company) | 
+        Q(visibility='PARTNER')
+    )
+    
+    matching_loads = []
+    
+    # Fetch settings
+    settings_obj = GlobalSettings.objects.first()
+    if not settings_obj:
+        settings_obj = GlobalSettings.objects.create()
+        
+    rate = float(settings_obj.heavy_asset_commission_rate) if trip.vehicle.vehicle_type in ['torus', 'trailer'] else float(settings_obj.exchange_commission_rate)
+    flat_fee = float(settings_obj.flat_transaction_fee)
+    
+    # Mock parameters for simulation
+    revenue_out = 45000
+    cost_per_km = 45
+    
+    for load in all_pool_loads:
+        # Asset Specialization: Torus Trucks must not carry refrigerated/closed loads
+        if vehicle_type == 'torus' and ('refrigerated' in load.cargo_type.lower() or 'closed' in load.cargo_type.lower()):
+            continue
+            
+        dist = haversine(dest_lat, dest_lon, load.origin_lat, load.origin_lon)
+        if dist <= 60.0:  # 60km radius
+            return_dist = haversine(load.origin_lat, load.origin_lon, load.destination_lat, load.destination_lon)
+            total_dist = (trip.total_distance_km or 200) + return_dist
+            fuel_cost = total_dist * cost_per_km
+            
+            revenue_return = float(load.weight_tons) * 1500
+            platform_fee = ((revenue_return * rate) / 100) + flat_fee if load.origin_company != request.user.company else 0
+            
+            net_profit = (revenue_out + revenue_return) - fuel_cost - platform_fee
+            
+            matching_loads.append({
+                'load': load,
+                'distance': round(dist, 1),
+                'match_type': 'Internal' if load.origin_company == request.user.company else 'Cross-Tenant',
+                'revenue_out': revenue_out,
+                'revenue_return': round(revenue_return, 2),
+                'total_revenue': round(revenue_out + revenue_return, 2),
+                'fuel_cost': round(fuel_cost, 2),
+                'platform_fee': round(platform_fee, 2),
+                'net_profit': round(net_profit, 2)
+            })
+            
+    # Sort by distance
+    matching_loads.sort(key=lambda x: x['distance'])
+    
+    if request.method == 'POST':
+        load_id = request.POST.get('load_id')
+        selected_load = get_object_or_404(GlobalLoadPool, id=load_id)
+        
+        # 3. Cross-Tenant Handshake (Auto-generate return trip)
+        return_trip = Trip.objects.create(
+            company=request.user.company,
+            vehicle=trip.vehicle,
+            driver=trip.driver,
+            start_location=f"Lat {selected_load.origin_lat:.4f}, Lon {selected_load.origin_lon:.4f}",
+            end_location=f"Lat {selected_load.destination_lat:.4f}, Lon {selected_load.destination_lon:.4f}",
+            goods_type=selected_load.cargo_type,
+            status='approved'
+        )
+        selected_load.is_fulfilled = True
+        selected_load.save()
+        
+        # Unlock outbound trip dispatch since backhaul is secured
+        trip.status = 'approved'
+        trip.save()
+        
+        # Calculate financial ROI loop
+        # Formula: Net Profit = (Revenue_Out + Revenue_Return) - (Total Distance * Cost_Per_KM)
+        revenue_out = 45000  # Example mock data
+        revenue_return = float(selected_load.weight_tons) * 1500  # mock rate
+        total_dist = (trip.total_distance_km or 200) + haversine(selected_load.origin_lat, selected_load.origin_lon, selected_load.destination_lat, selected_load.destination_lon)
+        cost_per_km = 45
+        fuel_cost = total_dist * cost_per_km
+        
+        # Calculate your cut from the return leg revenue based on GlobalSettings
+        settings_obj = GlobalSettings.objects.first()
+        rate = float(settings_obj.heavy_asset_commission_rate) if trip.vehicle.vehicle_type in ['torus', 'trailer'] else float(settings_obj.exchange_commission_rate)
+        flat_fee = float(settings_obj.flat_transaction_fee)
+        
+        platform_fee = ((revenue_return * rate) / 100) + flat_fee if selected_load.origin_company != request.user.company else 0
+        
+        linked_loop = LinkedTrip.objects.create(
+            outbound_trip=trip,
+            return_trip=return_trip,
+            combined_revenue=revenue_out + revenue_return,
+            total_estimated_fuel_cost=fuel_cost,
+            platform_commission=platform_fee
+        )
+        
+        roi = linked_loop.calculate_loop_roi()
+        if roi > 0:
+            messages.success(request, f"Backhaul secured! Linked Loop created. ROI: ₹{roi:,.2f}")
+        else:
+            messages.warning(request, f"Backhaul secured, but Linked Loop ROI is negative: ₹{roi:,.2f}")
+            
+        return redirect('trip_allocation')
+        
+    return render(request, 'fleet/logiloop_matcher.html', {
+        'trip': trip,
+        'matching_loads': matching_loads,
+        'dest_lat': dest_lat,
+        'dest_lon': dest_lon
+    })

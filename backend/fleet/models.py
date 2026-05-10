@@ -537,3 +537,68 @@ class MaintenanceLog(models.Model):
             else:
                 self.status = 'UPCOMING'
         super().save(*args, **kwargs)
+
+
+# ─────────────────────────────────────────────
+#  LOGILOOP EXCHANGE (Cross-Tenant Backhaul)
+# ─────────────────────────────────────────────
+class GlobalLoadPool(models.Model):
+    """Loads published by tenants for other companies to pick up."""
+    SHARING_CHOICES = [
+        ('PRIVATE', 'Internal Only'),
+        ('PUBLIC', 'All Tenants'),
+        ('PARTNER', 'Trusted Only')
+    ]
+    
+    origin_company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='offered_loads')
+    cargo_type = models.CharField(max_length=100) # e.g., 'Granite', 'Vegetables'
+    weight_tons = models.DecimalField(max_digits=5, decimal_places=2)
+    required_vehicle_type = models.CharField(max_length=50) # e.g., 'torus', 'trailer'
+    origin_lat = models.FloatField()
+    origin_lon = models.FloatField()
+    destination_lat = models.FloatField()
+    destination_lon = models.FloatField()
+    visibility = models.CharField(max_length=10, choices=SHARING_CHOICES, default='PRIVATE')
+    is_fulfilled = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.cargo_type} ({self.weight_tons}t) from {self.origin_company.name}"
+
+
+class LinkedTrip(models.Model):
+    """Binds outgoing and return legs into a single 'Profitability Loop'."""
+    SETTLEMENT_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('PAID', 'Paid')
+    ]
+    
+    outbound_trip = models.OneToOneField(Trip, on_delete=models.CASCADE, related_name='return_leg_binding')
+    return_trip = models.ForeignKey(Trip, on_delete=models.SET_NULL, null=True, related_name='outbound_leg_binding')
+    
+    # Financial Aggregation
+    combined_revenue = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    total_estimated_fuel_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    platform_commission = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) # For Cross-Tenant matches
+    settlement_status = models.CharField(max_length=20, choices=SETTLEMENT_CHOICES, default='PENDING')
+
+    def calculate_loop_roi(self):
+        """Calculates if the total circuit is profitable."""
+        return float(self.combined_revenue) - float(self.total_estimated_fuel_cost)
+
+    def __str__(self):
+        return f"Linked Loop: Trip #{self.outbound_trip.id} + #{self.return_trip.id if self.return_trip else 'None'}"
+
+
+class GlobalSettings(models.Model):
+    """SaaS Admin Configuration for the LogiLoop Exchange."""
+    exchange_commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=5.00, help_text="Standard Rate (%)")
+    heavy_asset_commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=3.00, help_text="Heavy Asset Rate (%)")
+    flat_transaction_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Flat Fee per Transaction")
+    enable_cross_tenant_matching = models.BooleanField(default=True)
+    
+    class Meta:
+        verbose_name = "Global Setting"
+        verbose_name_plural = "Global Settings"
+
+    def __str__(self):
+        return "LogiControl Global Settings"
