@@ -3,16 +3,31 @@ Django settings for logistics_fleet – LogiTracker SaaS Platform.
 """
 from pathlib import Path
 import os
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # ──────────────────────────────────────────────────────────
 #  SECURITY
 # ──────────────────────────────────────────────────────────
-SECRET_KEY = 'django-insecure-@=e60d%tkx6scp83qrx2z&u88@g5s-v2tg777(@jgq5mrslhst'
-DEBUG = True
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-@=e60d%tkx6scp83qrx2z&u88@g5s-v2tg777(@jgq5mrslhst')
+
+# Set DEBUG to False in production
+DEBUG = 'RENDER' not in os.environ
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
 # ──────────────────────────────────────────────────────────
 #  INSTALLED APPS
@@ -40,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -70,21 +86,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'logistics_fleet.wsgi.application'
 
 # ──────────────────────────────────────────────────────────
-#  DATABASE  (MySQL / mysqlclient)
+#  DATABASE  (Render & TiDB via dj-database-url)
 # ──────────────────────────────────────────────────────────
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'logistics_db',
-        'USER': 'root',
-        'PASSWORD': 'TvS@2511',
-        'HOST': 'localhost',
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
-    }
+    'default': dj_database_url.config(
+        default='mysql://root:TvS@2511@localhost:3306/logistics_db',
+        conn_max_age=600,
+        ssl_require=False  # TiDB Serverless usually requires this, dj-database-url parses ?ssl_mode=VERIFY_IDENTITY automatically
+    )
+}
+
+# TiDB requires specific SQL mode
+DATABASES['default']['OPTIONS'] = {
+    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    'charset': 'utf8mb4',
 }
 
 # ──────────────────────────────────────────────────────────
@@ -168,6 +183,10 @@ USE_TZ = True
 # ──────────────────────────────────────────────────────────
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Enable WhiteNoise compression and caching
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

@@ -2,11 +2,12 @@
 # exit on error
 set -o errexit
 
-echo "Installing requirements..."
+echo "Installing dependencies..."
 pip install -r requirements.txt
 
-echo "Running collectstatic..."
-python manage.py collectstatic --no-input
+# The Django app is in the 'backend' folder, so we need to run manage.py from there.
+echo "Collecting static files..."
+python backend/manage.py collectstatic --no-input
 
 echo "Running database migrations..."
-python manage.py migrate
+python backend/manage.py migrate
