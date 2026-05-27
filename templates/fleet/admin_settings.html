@@ -56,7 +56,41 @@
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center">
+                    <hr class="my-4 text-muted">
+                    
+                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-palette text-secondary me-2"></i>System Preferences</h6>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Language</label>
+                        <select class="form-select" name="system_language">
+                            <option value="en" selected>English (UK)</option>
+                            <option value="hi">Hindi</option>
+                            <option value="ta">Tamil</option>
+                            <option value="ml">Malayalam</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Appearance (Theme)</label>
+                        <select class="form-select" name="appearance_theme">
+                            <option value="light" selected>Light Mode</option>
+                            <option value="dark">Dark Mode</option>
+                            <option value="auto">System Default</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="emailNotifications" name="email_notifications" checked>
+                            <label class="form-check-label fw-bold text-dark ms-2" for="emailNotifications">Email Alerts</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="smsNotifications" name="sms_notifications" checked>
+                            <label class="form-check-label fw-bold text-dark ms-2" for="smsNotifications">SMS Gateway Integration</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary-custom w-100 justify-content-center mt-3">
                         Save Configuration
                     </button>
                 </form>
