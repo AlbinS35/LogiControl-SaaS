@@ -2,6 +2,26 @@
 
 {% block title %}Enterprise Admin - LogiControl India{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    #dashboardMap { height: 250px; width: 100%; border-radius: 12px; }
+    .dashboard-map-legend {
+        position: absolute; top: 0.75rem; left: 0.75rem;
+        background: rgba(255,255,255,0.92); padding: 0.6rem 0.8rem;
+        border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        z-index: 1000; font-size: 0.7rem;
+    }
+    .vehicle-tooltip-sm {
+        background: #0b4a99 !important; color: white !important;
+        border: none !important; border-radius: 3px !important;
+        padding: 1px 5px !important; font-size: 0.55rem !important;
+        font-weight: 800 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+    }
+    .vehicle-tooltip-sm::before { border-top-color: #0b4a99 !important; }
+</style>
+{% endblock %}
+
 {% block enterprise_content %}
 <div class="d-flex justify-content-between align-items-end mb-4">
     <div>
@@ -150,7 +170,23 @@
                             <span class="status-badge bg-light text-muted border rounded-pill px-2">{{ trip.status|upper }}</span>
                             {% endif %}
                         </td>
-                        <td class="text-end"><a href="{% url 'route_analytics' %}" class="text-primary" title="View Route"><i class="bi bi-eye"></i></a></td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-1 align-items-center">
+                                <a href="{% url 'route_analytics' %}?trip={{ trip.id }}" class="btn btn-sm btn-outline-primary py-0 px-1" title="View Route" style="font-size:0.75rem;">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if trip.status == 'approved' %}
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Cancel trip LC-{{ trip.id }} ({{ trip.vehicle.registration_number }})? This will release the vehicle and driver.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="trip_id" value="{{ trip.id }}">
+                                    <input type="hidden" name="action" value="cancel_trip">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Cancel Trip" style="font-size:0.75rem;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr id="emptyRow">
@@ -214,17 +250,19 @@
 <!-- Bottom Row: Map and Performance -->
 <div class="row g-4">
     <div class="col-lg-8">
-        <div class="map-card shadow-sm border border-light">
-            <div class="map-legend">
-                <div class="text-uppercase fw-bold text-muted mb-2" style="font-size: 0.6rem; letter-spacing: 1px;">Network Density</div>
+        <div class="card border-0 shadow-sm" style="border-radius:12px; overflow:hidden; position:relative;">
+            <div id="dashboardMap"></div>
+            <div class="dashboard-map-legend">
+                <div class="text-uppercase fw-bold text-muted mb-1" style="font-size: 0.55rem; letter-spacing: 1px;">Fleet Network</div>
                 <div class="d-flex align-items-center mb-1">
-                    <i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.4rem;"></i>
-                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Active Trips: {{ active_trips_count }}</span>
+                    <i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.35rem;"></i>
+                    <span class="fw-bold text-dark">Active Trips: {{ active_trips_count }}</span>
                 </div>
                 <div class="d-flex align-items-center">
-                    <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.4rem;"></i>
-                    <span class="fw-bold text-dark" style="font-size: 0.75rem;">Active Drivers: {{ active_drivers.count }}</span>
+                    <i class="bi bi-circle-fill text-success me-2" style="font-size: 0.35rem;"></i>
+                    <span class="fw-bold text-dark">Active Drivers: {{ active_drivers.count }}</span>
                 </div>
+                <a href="{% url 'route_analytics' %}" class="d-block mt-1 text-primary fw-bold text-decoration-none" style="font-size:0.65rem;">View Full Map →</a>
             </div>
         </div>
     </div>
@@ -449,6 +487,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     // Fleet Filter
@@ -474,6 +513,105 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('fleetFilterBtn').innerHTML = '<i class="bi bi-filter"></i> ' + this.textContent;
         });
     });
+
+    // ════════════════════════════════════════════
+    //  DASHBOARD MAP — Show all allocated trips
+    // ════════════════════════════════════════════
+    var dashMap = L.map('dashboardMap', { zoomControl: false, attributionControl: false }).setView([22.5937, 78.9629], 5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd', maxZoom: 20
+    }).addTo(dashMap);
+
+    var routeColors = ['#0b4a99', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+    var allDashBounds = [];
+
+    function makeMiniTruckIcon(color) {
+        return L.divIcon({
+            className: '',
+            html: '<div style="background:' + color + ';color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:2px solid white;">🚛</div>',
+            iconSize: [22, 22], iconAnchor: [11, 11],
+        });
+    }
+    function makeMiniLetterIcon(letter, bg) {
+        return L.divIcon({
+            className: '',
+            html: '<div style="background:' + bg + ';color:white;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,0.3);border:1.5px solid white;">' + letter + '</div>',
+            iconSize: [18, 18], iconAnchor: [9, 9],
+        });
+    }
+
+    async function geocodeDash(place) {
+        try {
+            const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(place + ', India') + '&limit=1&countrycodes=in', { headers: { 'Accept-Language': 'en', 'User-Agent': 'LogiControl/1.0' } });
+            const data = await r.json();
+            if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        } catch (e) {}
+        return null;
+    }
+
+    async function drawDashRoute(start, end, color) {
+        try {
+            const r = await fetch('https://router.project-osrm.org/route/v1/driving/' + start[1] + ',' + start[0] + ';' + end[1] + ',' + end[0] + '?overview=full&geometries=geojson');
+            const data = await r.json();
+            if (data.routes && data.routes[0]) {
+                return L.polyline(data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]), { color: color, weight: 3, opacity: 0.7 });
+            }
+        } catch (e) {}
+        return L.polyline([start, end], { color: color, weight: 2, opacity: 0.5, dashArray: '6 4' });
+    }
+
+    function delayMs(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // Build trip data from active_trips_list template context
+    var dashTrips = [
+        {% for trip in active_trips_list %}
+        {
+            id: {{ trip.id }},
+            reg: "{{ trip.vehicle.registration_number|escapejs }}",
+            driver: "{% if trip.driver %}{{ trip.driver.get_full_name|default:trip.driver.username|escapejs }}{% else %}Unassigned{% endif %}",
+            start: "{{ trip.start_location|escapejs }}",
+            end: "{{ trip.end_location|escapejs }}",
+            status: "{{ trip.status|escapejs }}",
+            goods: "{{ trip.goods_name|default:trip.goods_type|default:'N/A'|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    async function plotDashTrips() {
+        for (let i = 0; i < dashTrips.length; i++) {
+            const t = dashTrips[i];
+            const color = routeColors[i % routeColors.length];
+
+            if (i > 0) await delayMs(1100);
+            const sc = await geocodeDash(t.start);
+            await delayMs(1100);
+            const ec = await geocodeDash(t.end);
+            if (!sc || !ec) continue;
+
+            allDashBounds.push(sc, ec);
+
+            // Start & end mini markers
+            L.marker(sc, { icon: makeMiniLetterIcon('A', '#22c55e') }).addTo(dashMap);
+            L.marker(ec, { icon: makeMiniLetterIcon('B', '#ef4444') }).addTo(dashMap);
+
+            // Draw route
+            await delayMs(200);
+            const line = await drawDashRoute(sc, ec, color);
+            if (line) line.addTo(dashMap);
+
+            // Truck at midpoint
+            const mid = [(sc[0] + ec[0]) / 2, (sc[1] + ec[1]) / 2];
+            const popup = '<div style="font-size:0.78rem;"><strong>' + t.reg + '</strong><br>' + t.driver + '<br><small>' + t.start + ' → ' + t.end + '</small><br><small>Goods: ' + t.goods + '</small></div>';
+            const marker = L.marker(mid, { icon: makeMiniTruckIcon(color) }).addTo(dashMap).bindPopup(popup);
+            marker.bindTooltip(t.reg, { permanent: true, direction: 'bottom', className: 'vehicle-tooltip-sm', offset: [0, 5] });
+
+            if (allDashBounds.length >= 2) {
+                dashMap.fitBounds(L.latLngBounds(allDashBounds), { padding: [20, 20] });
+            }
+        }
+    }
+
+    plotDashTrips();
 });
 </script>
 {% endblock %}

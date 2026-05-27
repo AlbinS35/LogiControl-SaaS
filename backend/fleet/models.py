@@ -582,8 +582,10 @@ class GlobalLoadPool(models.Model):
     required_vehicle_type = models.CharField(max_length=50) # e.g., 'torus', 'trailer'
     origin_lat = models.FloatField()
     origin_lon = models.FloatField()
+    origin_name = models.CharField(max_length=255, null=True, blank=True, help_text="Human-readable origin name")
     destination_lat = models.FloatField()
     destination_lon = models.FloatField()
+    destination_name = models.CharField(max_length=255, null=True, blank=True, help_text="Human-readable destination name")
     visibility = models.CharField(max_length=10, choices=SHARING_CHOICES, default='PRIVATE')
     is_fulfilled = models.BooleanField(default=False)
 

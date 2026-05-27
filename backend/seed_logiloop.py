@@ -58,8 +58,10 @@ else:
         required_vehicle_type='pickup',
         origin_lat=9.6644,
         origin_lon=76.5599,
+        origin_name='Ettumanoor',
         destination_lat=9.4981,
         destination_lon=76.3388,
+        destination_name='Alappuzha',
         visibility='PUBLIC',
         is_fulfilled=False
     )
@@ -72,8 +74,10 @@ else:
         required_vehicle_type='pickup',
         origin_lat=9.5916,
         origin_lon=76.5222,
+        origin_name='Kottayam',
         destination_lat=9.9312,
-        destination_lon=76.2673, # Kochi
+        destination_lon=76.2673,
+        destination_name='Kochi',
         visibility='PRIVATE',
         is_fulfilled=False
     )

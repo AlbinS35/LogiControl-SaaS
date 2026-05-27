@@ -259,7 +259,7 @@
                     <div class="row mb-4 align-items-center position-relative">
                         <div class="col-5">
                             <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">ORIGIN</div>
-                            <div class="fw-bold text-dark"><i class="bi bi-geo-alt text-primary me-1"></i> {{ load.origin_lat }}, {{ load.origin_lon }}</div>
+                            <div class="fw-bold text-dark" title="{{ load.origin_lat }}, {{ load.origin_lon }}"><i class="bi bi-geo-alt text-primary me-1"></i> {{ load.origin_name|default:load.origin_lat }}</div>
                         </div>
                         <div class="col-2 text-center position-relative">
                             <div style="border-top: 1px dashed #cbd5e1; width: 100%; position: absolute; top: 50%; z-index: 1;"></div>
@@ -267,7 +267,7 @@
                         </div>
                         <div class="col-5 text-end">
                             <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.65rem;">DESTINATION</div>
-                            <div class="fw-bold text-dark"><i class="bi bi-flag text-danger me-1"></i> {{ load.destination_lat }}, {{ load.destination_lon }}</div>
+                            <div class="fw-bold text-dark" title="{{ load.destination_lat }}, {{ load.destination_lon }}"><i class="bi bi-flag text-danger me-1"></i> {{ load.destination_name|default:load.destination_lat }}</div>
                         </div>
                     </div>
 
@@ -301,7 +301,7 @@
                   <div class="modal-body">
                     <div class="alert alert-light border mb-3 small">
                         <i class="bi bi-box-seam text-primary me-1"></i>
-                        <strong>{{ load.origin_lat }}, {{ load.origin_lon }}</strong> → <strong>{{ load.destination_lat }}, {{ load.destination_lon }}</strong><br>
+                        <strong>{{ load.origin_name|default:load.origin_lat }}</strong> → <strong>{{ load.destination_name|default:load.destination_lat }}</strong><br>
                         Cargo: {{ load.cargo_type }} ({{ load.weight_tons }}t)
                     </div>
                     <form method="POST" action="{% url 'trip_allocation' %}">

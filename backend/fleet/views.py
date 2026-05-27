@@ -356,6 +356,13 @@ def manager_dashboard(request):
             trip.status = 'rejected'
             trip.save()
             messages.warning(request, f'Trip #{trip.id} rejected.')
+        elif action == 'cancel_trip':
+            if trip.status == 'approved':
+                trip.status = 'rejected'
+                trip.save()
+                messages.warning(request, f'Trip #{trip.id} ({trip.vehicle.registration_number}) has been cancelled.')
+            else:
+                messages.error(request, f'Trip #{trip.id} cannot be cancelled — it is already {trip.get_status_display()}.')
         elif action == 'approve_fuel':
             trip.fuel_approved = True
             trip.save()
@@ -881,6 +888,38 @@ def driver_directory(request):
     return render(request, 'fleet/driver_directory.html', context)
 
 
+@login_required
+@manager_required
+def export_drivers(request):
+    import csv
+    from django.http import HttpResponse
+    company = request.user.company
+    drivers = User.objects.filter(role='driver', company=company)
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="drivers_directory.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Driver ID', 'Name', 'Email', 'Phone', 'Driving License', 'Experience (Years)', 'Status'])
+    
+    # Need to compute status as done in the view
+    busy_driver_ids = set(Trip.objects.filter(status='in_progress', company=company).values_list('driver_id', flat=True))
+    
+    for d in drivers:
+        status = "On-Trip" if d.id in busy_driver_ids else "Active"
+        writer.writerow([
+            f'LC-DRV-{d.id:02d}',
+            d.get_full_name() or d.username,
+            d.email,
+            d.phone_number,
+            d.driving_license,
+            d.experience_years,
+            status
+        ])
+        
+    return response
+
+
 # ══════════════════════════════════════════════════════════
 #  TRIP ALLOCATION
 # ══════════════════════════════════════════════════════════
@@ -1024,8 +1063,20 @@ def trip_allocation(request):
 @manager_required
 def route_analytics(request):
     company = request.user.company
-    active_trips = Trip.objects.filter(company=company, status='in_progress').select_related('vehicle')
-    
+    import json
+
+    # Single-trip filter via ?trip=ID from dashboard "View" link
+    single_trip_id = request.GET.get('trip')
+
+    # All allocated trips (approved + in_progress)
+    allocated_trips = Trip.objects.filter(
+        company=company, status__in=['in_progress', 'approved']
+    ).select_related('vehicle', 'driver').order_by('-created_at')
+
+    # If a specific trip is requested, narrow down to just that one
+    if single_trip_id:
+        allocated_trips = allocated_trips.filter(id=single_trip_id)
+
     # Calculate distance for today's completed trips
     from django.utils import timezone
     from django.db.models import F, Sum, Avg
@@ -1035,17 +1086,34 @@ def route_analytics(request):
     total_distance = total_distance_qs['total'] or 0
 
     # Calculate Avg Fleet Speed
-    active_vehicles = Vehicle.objects.filter(company=company, trips__in=active_trips)
+    active_vehicles = Vehicle.objects.filter(company=company, trips__in=allocated_trips)
     avg_speed_qs = active_vehicles.aggregate(avg=Avg('current_speed'))
     avg_speed = round(avg_speed_qs['avg'] or 0, 1)
 
     critical_alerts = Alert.objects.filter(company=company, alert_type__in=['panic', 'maintenance']).order_by('-created_at')[:5]
 
+    # Build trip data list for map rendering (JSON)
+    trip_map_data = []
+    for trip in allocated_trips:
+        trip_map_data.append({
+            'id': trip.id,
+            'registration': trip.vehicle.registration_number if trip.vehicle else 'N/A',
+            'driver_name': trip.driver.get_full_name() or trip.driver.username if trip.driver else 'Unassigned',
+            'goods_name': trip.goods_name or trip.goods_type or 'N/A',
+            'start_location': trip.start_location,
+            'end_location': trip.end_location,
+            'status': trip.status,
+            'speed': float(trip.vehicle.current_speed) if trip.vehicle else 0,
+        })
+
     context = {
-        'active_trips': active_trips,
+        'allocated_trips': allocated_trips,
+        'active_trips': allocated_trips.filter(status='in_progress'),
         'total_distance': total_distance,
         'critical_alerts': critical_alerts,
         'avg_speed': avg_speed,
+        'trip_map_data_json': json.dumps(trip_map_data),
+        'total_allocated': allocated_trips.count(),
     }
     return render(request, 'fleet/route_analytics.html', context)
 
@@ -1074,6 +1142,9 @@ def api_telemetry(request):
             'speed': float(v.current_speed),
             'trip_id': trip.id,
             'destination': trip.end_location,
+            'start_location': trip.start_location,
+            'driver_name': trip.driver.get_full_name() or trip.driver.username if trip.driver else 'Unassigned',
+            'goods_name': trip.goods_name or 'N/A',
         })
         
     today = timezone.now().date()

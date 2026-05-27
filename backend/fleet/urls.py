@@ -60,6 +60,7 @@ urlpatterns = [
     path('fleet-registry/', views.fleet_registry, name='fleet_registry'),
     path('directory/vehicles/', views.vehicle_directory, name='vehicle_directory'),
     path('directory/drivers/', views.driver_directory, name='driver_directory'),
+    path('directory/drivers/export/', views.export_drivers, name='export_drivers'),
     path('vehicle/<int:vehicle_id>/status/', views.vehicle_status_update, name='vehicle_status_update'),
     path('vehicle/<int:vehicle_id>/fuel-insights/', views.vehicle_fuel_insights, name='vehicle_fuel_insights'),
 

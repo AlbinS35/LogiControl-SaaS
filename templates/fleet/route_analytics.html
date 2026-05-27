@@ -4,14 +4,80 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+    /* Tab navigation */
+    .ra-tabs { display: flex; gap: 0; }
+    .ra-tab {
+        padding: 0.5rem 1.25rem; font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+        color: #64748b; text-decoration: none; border-bottom: 2px solid transparent;
+        transition: all 0.2s; cursor: pointer;
+    }
+    .ra-tab:hover { color: #0b4a99; }
+    .ra-tab.active { color: #0b4a99; border-bottom-color: #0b4a99; }
+
+    /* Tab content */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Trip list panel */
+    .trip-list-panel {
+        max-height: 540px; overflow-y: auto;
+    }
+    .trip-list-panel::-webkit-scrollbar { width: 5px; }
+    .trip-list-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+
+    .trip-card {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 0.85rem 1rem; margin-bottom: 0.6rem; cursor: pointer;
+        transition: all 0.2s; position: relative;
+    }
+    .trip-card:hover { border-color: #0b4a99; box-shadow: 0 2px 12px rgba(11,74,153,0.1); transform: translateX(2px); }
+    .trip-card.highlighted { border-color: #0b4a99; background: #eff6ff; box-shadow: 0 2px 12px rgba(11,74,153,0.15); }
+    .trip-card .reg-badge {
+        display: inline-block; background: #0b4a99; color: white; font-weight: 800;
+        font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; letter-spacing: 0.5px;
+    }
+    .trip-card .status-dot {
+        width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    }
+    .trip-card .status-dot.on-duty { background: #22c55e; }
+    .trip-card .status-dot.ready { background: #3b82f6; }
+
+    /* Map container */
+    .map-container { border-radius: 12px; overflow: hidden; position: relative; }
+    #routeMap { height: 600px; width: 100%; }
+
+    /* Map legend */
+    .map-legend-overlay {
+        position: absolute; bottom: 1rem; left: 1rem;
+        background: rgba(255,255,255,0.95); border-radius: 10px;
+        padding: 0.75rem 1rem; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        z-index: 1000; min-width: 200px;
+    }
+
+    /* Custom Leaflet tooltip for registration */
+    .vehicle-tooltip {
+        background: #0b4a99 !important; color: white !important;
+        border: none !important; border-radius: 4px !important;
+        padding: 2px 6px !important; font-size: 0.65rem !important;
+        font-weight: 800 !important; letter-spacing: 0.5px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    }
+    .vehicle-tooltip::before { border-top-color: #0b4a99 !important; }
+
+    /* Leaflet popup styling */
+    .trip-popup h6 { color: #0b4a99; margin-bottom: 0.35rem; font-size: 0.85rem; }
+    .trip-popup .popup-row { font-size: 0.78rem; margin-bottom: 0.15rem; color: #334155; }
+    .trip-popup .popup-row strong { color: #1e293b; }
+</style>
 {% endblock %}
 
 {% block top_header_content %}
 <div class="d-flex align-items-center">
-    <div class="me-4 pe-4 border-end">
-        <a href="{% url 'route_analytics' %}" class="text-primary text-decoration-none fw-bold small me-3 border-bottom border-primary border-2 pb-2 text-uppercase">NETWORK MAP</a>
-        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">FLEET TRACKING</a>
-        <a href="#" class="text-muted text-decoration-none fw-bold small ms-3 text-uppercase">HEATMAPS</a>
+    <div class="me-4 pe-4 border-end ra-tabs">
+        <a href="#" class="ra-tab active" data-tab="network-map">NETWORK MAP</a>
+        <a href="#" class="ra-tab" data-tab="fleet-tracking">FLEET TRACKING</a>
+        <a href="#" class="ra-tab" data-tab="heatmaps">HEATMAPS</a>
     </div>
     <form action="{% url 'universal_search' %}" method="GET" class="search-bar m-0" style="background: #f1f5f9; border: none; width: 300px;">
         <i class="bi bi-search text-muted"></i>
@@ -22,10 +88,24 @@
 {% endblock %}
 
 {% block enterprise_content %}
+{% if request.GET.trip %}
+<div class="mb-3">
+    <a href="{% url 'route_analytics' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+        <i class="bi bi-arrow-left me-1"></i> Back to All Trips
+    </a>
+    <a href="{% url 'manager_dashboard' %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 ms-1">
+        <i class="bi bi-speedometer2 me-1"></i> Dashboard
+    </a>
+</div>
+{% endif %}
 <div class="d-flex justify-content-between align-items-end mb-4">
     <div>
         <h2 class="fw-bold text-dark mb-1">Route Analytics & Telemetry</h2>
-        <p class="text-muted mb-0">Live tracking and historical analytics of your national fleet network.</p>
+        {% if request.GET.trip %}
+        <p class="text-muted mb-0">Viewing route details for Trip #LC-{{ request.GET.trip }}.</p>
+        {% else %}
+        <p class="text-muted mb-0">Live tracking and routes for all {{ total_allocated }} allocated trip{{ total_allocated|pluralize }} across your fleet.</p>
+        {% endif %}
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'export_route_analytics' %}" class="btn btn-outline-primary fw-bold px-4 rounded-1 shadow-sm"><i class="bi bi-download me-2"></i> Export Data</a>
@@ -33,86 +113,190 @@
     </div>
 </div>
 
+<!-- ═══════════ TAB: NETWORK MAP ═══════════ -->
+<div class="tab-pane active" id="tab-network-map">
 <div class="row g-4">
-    <div class="col-lg-9">
-        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="height: 600px; position: relative;">
-            <div id="map" class="w-100 h-100 position-relative z-0"></div>
-            
-            <!-- Legend Overlay -->
-            <div class="position-absolute bottom-0 start-0 m-4 card border-0 shadow" style="width: 250px; background: rgba(255,255,255,0.95); z-index: 1000;">
-                <div class="card-body p-3">
-                    <h6 class="fw-bold small mb-3 text-uppercase text-muted" style="letter-spacing: 1px;">Network Density</h6>
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-circle-fill text-primary me-2" style="font-size: 0.5rem;"></i>
-                        <span class="small fw-bold">Active Corridors</span>
-                        <span class="ms-auto small text-muted">64%</span>
+    <!-- Map Column -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden map-container" style="height: 600px;">
+            <div id="routeMap" class="w-100 h-100"></div>
+
+            <!-- Legend -->
+            <div class="map-legend-overlay">
+                <div class="text-uppercase fw-bold text-muted mb-2" style="font-size: 0.6rem; letter-spacing: 1px;">Route Legend</div>
+                <div class="d-flex align-items-center mb-1">
+                    <span class="d-inline-block me-2" style="width:14px; height:4px; background:#22c55e; border-radius:2px;"></span>
+                    <span class="small fw-bold text-dark">Origin (A)</span>
+                </div>
+                <div class="d-flex align-items-center mb-1">
+                    <span class="d-inline-block me-2" style="width:14px; height:4px; background:#ef4444; border-radius:2px;"></span>
+                    <span class="small fw-bold text-dark">Destination (B)</span>
+                </div>
+                <div class="d-flex align-items-center mb-1">
+                    <span class="d-inline-block me-2" style="width:14px; height:4px; background:#0b4a99; border-radius:2px;"></span>
+                    <span class="small fw-bold text-dark">Active Route</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-truck-front me-2 text-primary" style="font-size:0.75rem;"></i>
+                    <span class="small fw-bold text-dark">Vehicle Position</span>
+                </div>
+                <hr class="my-2">
+                <div class="small text-muted fw-bold">{{ total_allocated }} Trip{{ total_allocated|pluralize }} Mapped</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Trip List + Telemetry -->
+    <div class="col-lg-4">
+        <!-- Telemetry KPIs -->
+        <div class="card border-0 shadow-sm rounded-4 mb-3">
+            <div class="card-body p-3">
+                <h6 class="fw-bold text-muted text-uppercase mb-3" style="font-size: 0.65rem; letter-spacing: 1px;">Live Telemetry</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.6rem;">Distance Today</div>
+                        <h5 class="fw-bold text-dark mb-0"><span id="total-distance-val">{{ total_distance }}</span> <span class="fs-6 text-muted">KM</span></h5>
                     </div>
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="bi bi-circle-fill text-warning me-2" style="font-size: 0.5rem;"></i>
-                        <span class="small fw-bold">Congestion Zones</span>
-                        <span class="ms-auto small text-muted">12%</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-circle-fill text-danger me-2" style="font-size: 0.5rem;"></i>
-                        <span class="small fw-bold">Restricted Routes</span>
-                        <span class="ms-auto small text-muted">4%</span>
+                    <div class="col-6">
+                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.6rem;">Avg. Speed</div>
+                        <h5 class="fw-bold text-dark mb-0"><span id="avg-speed-val">{{ avg_speed }}</span> <span class="fs-6 text-muted">KM/H</span></h5>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="col-lg-3">
-        <!-- Live Telemetry Sidebar -->
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-white border-bottom-0 p-4 pb-0">
-                <h5 class="fw-bold mb-0">Live Telemetry</h5>
+
+        <!-- Trip List -->
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white border-bottom p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-list-ul me-1"></i> Allocated Trips ({{ total_allocated }})</h6>
+                    <span class="badge bg-primary bg-opacity-10 text-primary">Live</span>
+                </div>
             </div>
-            <div class="card-body p-4">
-                
-                <div class="mb-4">
-                    <div class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.65rem;">Total Distance Covered (Today)</div>
-                    <h3 class="fw-bold text-dark mb-0"><span id="total-distance-val">{{ total_distance }}</span> <span class="fs-6 text-muted">KM</span></h3>
+            <div class="card-body p-2 trip-list-panel">
+                {% for trip in allocated_trips %}
+                <div class="trip-card" data-trip-id="{{ trip.id }}" onclick="focusTrip({{ trip.id }})">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="reg-badge">{{ trip.vehicle.registration_number }}</span>
+                        <span>
+                            <span class="status-dot {% if trip.status == 'in_progress' %}on-duty{% else %}ready{% endif %}"></span>
+                            <span class="small fw-bold {% if trip.status == 'in_progress' %}text-success{% else %}text-primary{% endif %}" style="font-size:0.65rem;">
+                                {% if trip.status == 'in_progress' %}ON-DUTY{% else %}READY{% endif %}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="fw-bold text-dark" style="font-size:0.8rem;">
+                        {% if trip.driver %}{{ trip.driver.get_full_name|default:trip.driver.username }}{% else %}Unassigned{% endif %}
+                    </div>
+                    <div class="text-muted" style="font-size:0.7rem;">
+                        <i class="bi bi-geo-alt text-primary me-1"></i>{{ trip.start_location }} → {{ trip.end_location }}
+                    </div>
+                    {% if trip.goods_name or trip.goods_type %}
+                    <div class="text-muted" style="font-size:0.65rem;">
+                        <i class="bi bi-box text-warning me-1"></i>{{ trip.goods_name|default:trip.goods_type }}
+                    </div>
+                    {% endif %}
                 </div>
-                
-                <div class="mb-4">
-                    <div class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.65rem;">Avg. Fleet Speed</div>
-                    <h3 class="fw-bold text-dark mb-0"><span id="avg-speed-val">{{ avg_speed }}</span> <span class="fs-6 text-muted">KM/H</span></h3>
+                {% empty %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-truck text-muted" style="font-size:2rem;"></i>
+                    <p class="mt-2 mb-0 small">No allocated trips. <a href="{% url 'trip_allocation' %}" class="text-primary">Deploy a vehicle</a>.</p>
                 </div>
-                
-                <hr class="text-light mb-4">
-                
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Critical Alerts -->
+        <div class="card border-0 shadow-sm rounded-4 mt-3">
+            <div class="card-body p-3">
                 <h6 class="fw-bold small mb-3">Critical Alerts</h6>
-                
                 <div id="alerts-container">
                     {% for alert in critical_alerts %}
-                    <div class="alert bg-danger bg-opacity-10 border-0 p-3 mb-3 rounded-3">
+                    <div class="alert bg-danger bg-opacity-10 border-0 p-2 mb-2 rounded-3">
                         <div class="d-flex align-items-start">
-                            <i class="bi bi-exclamation-triangle-fill text-danger mt-1 me-2"></i>
+                            <i class="bi bi-exclamation-triangle-fill text-danger mt-1 me-2" style="font-size:0.75rem;"></i>
                             <div>
-                                <div class="fw-bold text-dark small">{{ alert.get_alert_type_display }}</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">{{ alert.message }}</div>
-                                <a href="#" class="text-danger fw-bold text-decoration-none mt-1 d-block" style="font-size: 0.7rem;">View Details</a>
+                                <div class="fw-bold text-dark" style="font-size:0.75rem;">{{ alert.get_alert_type_display }}</div>
+                                <div class="text-muted" style="font-size: 0.65rem;">{{ alert.message }}</div>
                             </div>
                         </div>
                     </div>
                     {% empty %}
-                    <div class="alert bg-success bg-opacity-10 border-0 p-3 mb-0 rounded-3">
+                    <div class="alert bg-success bg-opacity-10 border-0 p-2 mb-0 rounded-3">
                         <div class="d-flex align-items-start">
                             <i class="bi bi-check-circle-fill text-success mt-1 me-2"></i>
                             <div>
                                 <div class="fw-bold text-dark small">All Systems Normal</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">No critical alerts currently active.</div>
+                                <div class="text-muted" style="font-size: 0.65rem;">No critical alerts currently active.</div>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                
             </div>
         </div>
     </div>
 </div>
+</div>
+
+<!-- ═══════════ TAB: FLEET TRACKING ═══════════ -->
+<div class="tab-pane" id="tab-fleet-tracking">
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-bottom p-3">
+        <h5 class="fw-bold mb-0">Fleet Tracking — All Allocated Vehicles</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Vehicle</th>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Driver</th>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Route</th>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Goods</th>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Status</th>
+                        <th class="text-uppercase small fw-bold text-muted" style="font-size:0.7rem;">Speed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trip in allocated_trips %}
+                    <tr>
+                        <td>
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold border border-primary border-opacity-25">{{ trip.vehicle.registration_number }}</span>
+                        </td>
+                        <td class="fw-bold small">{% if trip.driver %}{{ trip.driver.get_full_name|default:trip.driver.username }}{% else %}<span class="text-muted">Unassigned</span>{% endif %}</td>
+                        <td class="small text-muted"><i class="bi bi-geo-alt text-primary me-1"></i>{{ trip.start_location }} → {{ trip.end_location }}</td>
+                        <td class="small">{{ trip.goods_name|default:trip.goods_type|default:"—" }}</td>
+                        <td>
+                            {% if trip.status == 'in_progress' %}
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">ON-DUTY</span>
+                            {% else %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">READY</span>
+                            {% endif %}
+                        </td>
+                        <td class="small fw-bold">{{ trip.vehicle.current_speed }} km/h</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No allocated trips.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ═══════════ TAB: HEATMAPS ═══════════ -->
+<div class="tab-pane" id="tab-heatmaps">
+<div class="row g-4">
+    <div class="col-lg-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="height: 600px; position: relative;">
+            <div id="heatMap" class="w-100 h-100"></div>
+        </div>
+    </div>
+</div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -121,35 +305,194 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    var map = L.map('map').setView([22.5937, 78.9629], 5);
-    
+
+    // ════════════════════════════════════════════
+    //  TAB NAVIGATION
+    // ════════════════════════════════════════════
+    const tabs = document.querySelectorAll('.ra-tab');
+    const panes = document.querySelectorAll('.tab-pane');
+    let heatMapInitialized = false;
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = 'tab-' + this.getAttribute('data-tab');
+
+            tabs.forEach(t => t.classList.remove('active'));
+            panes.forEach(p => p.classList.remove('active'));
+
+            this.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+
+            // Initialize heatmap on first click
+            if (targetId === 'tab-heatmaps' && !heatMapInitialized) {
+                initHeatMap();
+                heatMapInitialized = true;
+            }
+        });
+    });
+
+    // ════════════════════════════════════════════
+    //  MAIN NETWORK MAP — Draw routes for ALL trips
+    // ════════════════════════════════════════════
+    var map = L.map('routeMap').setView([22.5937, 78.9629], 5);
+
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         subdomains: 'abcd',
         maxZoom: 20
     }).addTo(map);
 
-    var vehicleMarkers = {};
-    
-    // Dummy heatmap data for Network Density
-    var heatPoints = [
-        [28.6139, 77.2090, 0.8],
-        [19.0760, 72.8777, 0.9],
-        [12.9716, 77.5946, 0.7],
-        [13.0827, 80.2707, 0.6],
-        [22.5726, 88.3639, 0.5],
-        [23.0225, 72.5714, 0.6],
-        [21.1702, 72.8311, 0.5]
-    ];
-    L.heatLayer(heatPoints, {radius: 25, blur: 15, maxZoom: 10}).addTo(map);
+    var tripMapData = {{ trip_map_data_json|safe }};
+    var routeColors = ['#0b4a99', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#06b6d4'];
+    var tripLayers = {};  // Store layers per trip for focusing
 
-    var truckIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/751/751463.png',
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14]
-    });
+    // Icon factories
+    function makeLetterIcon(letter, bg) {
+        return L.divIcon({
+            className: '',
+            html: '<div style="background:' + bg + ';color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,0.3);border:2px solid white;">' + letter + '</div>',
+            iconSize: [28, 28], iconAnchor: [14, 14],
+        });
+    }
 
+    function makeTruckIcon(color) {
+        return L.divIcon({
+            className: '',
+            html: '<div style="background:' + color + ';color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;">🚛</div>',
+            iconSize: [32, 32], iconAnchor: [16, 16],
+        });
+    }
+
+    // Geocode using Nominatim
+    async function geocode(place) {
+        const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(place + ', India') + '&limit=1&countrycodes=in';
+        try {
+            const r = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'LogiControl/1.0' } });
+            const data = await r.json();
+            if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        } catch (e) {}
+        return null;
+    }
+
+    // Draw route between two coordinates using OSRM
+    async function drawRoute(startCoords, endCoords, color) {
+        try {
+            const osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
+                startCoords[1] + ',' + startCoords[0] + ';' +
+                endCoords[1] + ',' + endCoords[0] +
+                '?overview=full&geometries=geojson';
+            const r = await fetch(osrmUrl);
+            const data = await r.json();
+            if (data.routes && data.routes[0]) {
+                const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                return L.polyline(coords, { color: color, weight: 4, opacity: 0.75, dashArray: null });
+            }
+        } catch (e) {
+            // Fallback: draw a straight line
+            return L.polyline([startCoords, endCoords], { color: color, weight: 3, opacity: 0.5, dashArray: '8 6' });
+        }
+        return null;
+    }
+
+    // Rate-limited geocoding with delay to avoid Nominatim throttling
+    function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // Plot all trips
+    var allBounds = [];
+
+    async function plotAllTrips() {
+        for (let i = 0; i < tripMapData.length; i++) {
+            const trip = tripMapData[i];
+            const color = routeColors[i % routeColors.length];
+            const tripGroup = L.layerGroup().addTo(map);
+            tripLayers[trip.id] = { group: tripGroup, color: color };
+
+            // Delay to respect Nominatim 1req/sec
+            if (i > 0) await delay(1100);
+
+            const startCoords = await geocode(trip.start_location);
+            if (i > 0 || tripMapData.length > 1) await delay(1100);
+            const endCoords = await geocode(trip.end_location);
+
+            if (!startCoords || !endCoords) continue;
+
+            allBounds.push(startCoords, endCoords);
+
+            // Build popup HTML
+            const popupHtml =
+                '<div class="trip-popup" style="min-width:220px;">' +
+                '<h6 class="fw-bold border-bottom pb-1 mb-2"><i class="bi bi-truck-front me-1"></i>' + trip.registration + '</h6>' +
+                '<div class="popup-row"><strong>Trip ID:</strong> LC-' + trip.id + '</div>' +
+                '<div class="popup-row"><strong>Driver:</strong> ' + trip.driver_name + '</div>' +
+                '<div class="popup-row"><strong>Goods:</strong> ' + trip.goods_name + '</div>' +
+                '<div class="popup-row"><strong>Route:</strong> ' + trip.start_location + ' &rarr; ' + trip.end_location + '</div>' +
+                '<div class="popup-row"><strong>Status:</strong> <span class="badge ' + (trip.status === 'in_progress' ? 'bg-success' : 'bg-primary') + ' bg-opacity-25 ' + (trip.status === 'in_progress' ? 'text-success' : 'text-primary') + '">' + (trip.status === 'in_progress' ? 'ON-DUTY' : 'READY') + '</span></div>' +
+                '</div>';
+
+            // Start marker (A)
+            L.marker(startCoords, { icon: makeLetterIcon('A', '#22c55e') })
+                .addTo(tripGroup)
+                .bindPopup('<strong>🚀 Origin</strong><br>' + trip.start_location + '<br><small class="text-muted">' + trip.registration + '</small>');
+
+            // End marker (B)
+            L.marker(endCoords, { icon: makeLetterIcon('B', '#ef4444') })
+                .addTo(tripGroup)
+                .bindPopup('<strong>🏁 Destination</strong><br>' + trip.end_location + '<br><small class="text-muted">' + trip.registration + '</small>');
+
+            // Draw route
+            await delay(200);
+            const routeLine = await drawRoute(startCoords, endCoords, color);
+            if (routeLine) {
+                routeLine.addTo(tripGroup);
+                routeLine.bindPopup(popupHtml);
+            }
+
+            // Truck icon at midpoint with permanent registration tooltip
+            const midLat = (startCoords[0] + endCoords[0]) / 2;
+            const midLng = (startCoords[1] + endCoords[1]) / 2;
+            const truckMarker = L.marker([midLat, midLng], { icon: makeTruckIcon(color) })
+                .addTo(tripGroup)
+                .bindPopup(popupHtml);
+
+            truckMarker.bindTooltip(trip.registration, {
+                permanent: true, direction: 'bottom',
+                className: 'vehicle-tooltip', offset: [0, 8]
+            });
+
+            // Fit bounds after each trip
+            if (allBounds.length >= 2) {
+                map.fitBounds(L.latLngBounds(allBounds), { padding: [40, 40] });
+            }
+        }
+    }
+
+    plotAllTrips();
+
+    // ════════════════════════════════════════════
+    //  FOCUS A TRIP from the sidebar list
+    // ════════════════════════════════════════════
+    window.focusTrip = function(tripId) {
+        // Highlight sidebar card
+        document.querySelectorAll('.trip-card').forEach(c => c.classList.remove('highlighted'));
+        const card = document.querySelector('.trip-card[data-trip-id="' + tripId + '"]');
+        if (card) card.classList.add('highlighted');
+
+        // Flash the route on the map
+        const layer = tripLayers[tripId];
+        if (layer && layer.group) {
+            layer.group.eachLayer(function(l) {
+                if (l instanceof L.Marker) {
+                    l.openPopup();
+                    map.setView(l.getLatLng(), 8, { animate: true });
+                }
+            });
+        }
+    };
+
+    // ════════════════════════════════════════════
+    //  LIVE TELEMETRY POLLING (updates KPIs + alerts)
+    // ════════════════════════════════════════════
     function fetchTelemetry() {
         fetch("{% url 'api_telemetry' %}")
             .then(response => response.json())
@@ -160,48 +503,53 @@ document.addEventListener("DOMContentLoaded", function() {
                 let alertsHtml = '';
                 if (data.alerts.length > 0) {
                     data.alerts.forEach(alert => {
-                        alertsHtml += `
-                        <div class="alert bg-danger bg-opacity-10 border-0 p-3 mb-3 rounded-3">
-                            <div class="d-flex align-items-start">
-                                <i class="bi bi-exclamation-triangle-fill text-danger mt-1 me-2"></i>
-                                <div>
-                                    <div class="fw-bold text-dark small">${alert.type}</div>
-                                    <div class="text-muted" style="font-size: 0.7rem;">${alert.message}</div>
-                                    <a href="#" class="text-danger fw-bold text-decoration-none mt-1 d-block" style="font-size: 0.7rem;">View Details</a>
-                                </div>
-                            </div>
-                        </div>`;
+                        alertsHtml += '<div class="alert bg-danger bg-opacity-10 border-0 p-2 mb-2 rounded-3"><div class="d-flex align-items-start"><i class="bi bi-exclamation-triangle-fill text-danger mt-1 me-2" style="font-size:0.75rem;"></i><div><div class="fw-bold text-dark" style="font-size:0.75rem;">' + alert.type + '</div><div class="text-muted" style="font-size: 0.65rem;">' + alert.message + '</div></div></div></div>';
                     });
                 } else {
-                    alertsHtml = `
-                    <div class="alert bg-success bg-opacity-10 border-0 p-3 mb-0 rounded-3">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill text-success mt-1 me-2"></i>
-                            <div>
-                                <div class="fw-bold text-dark small">All Systems Normal</div>
-                                <div class="text-muted" style="font-size: 0.7rem;">No critical alerts currently active.</div>
-                            </div>
-                        </div>
-                    </div>`;
+                    alertsHtml = '<div class="alert bg-success bg-opacity-10 border-0 p-2 mb-0 rounded-3"><div class="d-flex align-items-start"><i class="bi bi-check-circle-fill text-success mt-1 me-2"></i><div><div class="fw-bold text-dark small">All Systems Normal</div><div class="text-muted" style="font-size: 0.65rem;">No critical alerts currently active.</div></div></div></div>';
                 }
                 document.getElementById('alerts-container').innerHTML = alertsHtml;
-
-                data.vehicles.forEach(v => {
-                    if (vehicleMarkers[v.id]) {
-                        vehicleMarkers[v.id].setLatLng([v.lat, v.lon]);
-                        vehicleMarkers[v.id]._popup.setContent(`<strong>${v.registration}</strong><br>Speed: ${v.speed} km/h<br>Dest: ${v.destination}`);
-                    } else {
-                        var marker = L.marker([v.lat, v.lon], {icon: truckIcon}).addTo(map);
-                        marker.bindPopup(`<strong>${v.registration}</strong><br>Speed: ${v.speed} km/h<br>Dest: ${v.destination}`);
-                        vehicleMarkers[v.id] = marker;
-                    }
-                });
             })
-            .catch(err => console.error("Error fetching telemetry:", err));
+            .catch(err => console.error("Telemetry error:", err));
     }
 
     fetchTelemetry();
-    setInterval(fetchTelemetry, 3000);
+    setInterval(fetchTelemetry, 5000);
+
+    // ════════════════════════════════════════════
+    //  HEATMAP TAB (lazy-initialized)
+    // ════════════════════════════════════════════
+    window.initHeatMap = function() {
+        var heatmap = L.map('heatMap').setView([22.5937, 78.9629], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd', maxZoom: 20
+        }).addTo(heatmap);
+
+        // Generate heatmap points from trip data
+        var heatPoints = [];
+        tripMapData.forEach(function(trip) {
+            // We'll use geocoded positions later; for now use major corridor placeholders
+        });
+
+        // Indian logistics corridor heatpoints
+        var corridorPoints = [
+            [28.6139, 77.2090, 0.9], // Delhi
+            [19.0760, 72.8777, 0.95], // Mumbai
+            [12.9716, 77.5946, 0.8], // Bangalore
+            [13.0827, 80.2707, 0.7], // Chennai
+            [22.5726, 88.3639, 0.6], // Kolkata
+            [23.0225, 72.5714, 0.65], // Ahmedabad
+            [21.1702, 72.8311, 0.5], // Surat
+            [26.9124, 75.7873, 0.55], // Jaipur
+            [17.3850, 78.4867, 0.6], // Hyderabad
+            [18.5204, 73.8567, 0.55], // Pune
+            [10.8505, 76.2711, 0.45], // Palakkad
+            [9.9312, 76.2673, 0.5],  // Kochi
+            [8.5241, 76.9366, 0.4],  // Trivandrum
+        ];
+        L.heatLayer(corridorPoints, { radius: 30, blur: 20, maxZoom: 10, gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'} }).addTo(heatmap);
+    };
 });
 </script>
 {% endblock %}
