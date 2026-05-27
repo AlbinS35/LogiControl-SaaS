@@ -145,7 +145,7 @@
             </header>
 
             <!-- Scrollable Content -->
-            <div class="content-scroll" style="{% block content_scroll_style %}{% endblock %}">
+            <div class="content-scroll {% block content_scroll_class %}{% endblock %}">
                 <!-- Toast Messages (Top Right, max 2 messages) -->
                 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1060; margin-top: 10px;">
                     {% if messages %}

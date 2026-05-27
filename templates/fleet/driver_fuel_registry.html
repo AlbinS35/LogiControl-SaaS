@@ -198,7 +198,7 @@
 
             <!-- Progress Bar -->
             <div class="fuel-level-bar-wrap mt-3">
-                <div class="fuel-level-bar-fill" id="fuelBar" style="width: {{ analytics.estimated_fuel_pct }}%;"></div>
+                <div class="fuel-level-bar-fill" id="fuelBar" data-progress-pct="{{ analytics.estimated_fuel_pct }}"></div>
             </div>
 
             <!-- Sub-metrics -->
@@ -505,5 +505,10 @@
         a.download = `fuel_summary_trip_{{ active_trip.id|default:'0' }}.txt`;
         a.click();
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const fuelBar = document.getElementById('fuelBar');
+        if (fuelBar) fuelBar.style.width = fuelBar.getAttribute('data-progress-pct') + '%';
+    });
 </script>
 {% endblock %}

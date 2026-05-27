@@ -7,7 +7,7 @@ from django.db.models import Q, Count, Sum
 from datetime import timedelta
 import uuid
 
-from .models import Vehicle, Trip, User, Company, Payroll, Alert, Expense, FuelEntry, MaintenanceRecord, MaintenanceLog
+from .models import Vehicle, Trip, User, Company, Payroll, Alert, Expense, FuelEntry, MaintenanceRecord, MaintenanceLog, GlobalSettings, GlobalLoadPool, LinkedTrip
 from .forms import (
     TripDriverUpdateForm, TripApprovalForm, TripCreateForm,
     VehicleForm, DriverForm, OwnerSignupForm,
@@ -61,6 +61,66 @@ def resources(request):
 
 from django.views.decorators.cache import never_cache
 from django.contrib.auth import logout as auth_logout
+
+@never_cache
+def custom_login(request):
+    """
+    Custom login view that:
+    - Redirects already-authenticated users straight to their dashboard.
+    - Reads the 'Keep me logged in' checkbox to control session persistence:
+        Unchecked (default) → session_expire_at_browser_close = True
+        Checked             → session persists for SESSION_COOKIE_AGE seconds
+    """
+    # If already logged in, send to appropriate dashboard
+    if request.user.is_authenticated:
+        if request.user.is_admin():
+            return redirect('admin_dashboard')
+        elif request.user.is_manager():
+            return redirect('manager_dashboard')
+        elif request.user.is_driver():
+            return redirect('driver_dashboard')
+        return redirect('home')
+
+    error = None
+
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        keep_logged_in = request.POST.get('keep_logged_in')  # checkbox value
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user, backend='fleet.backends.RoleBasedBackend')
+
+            # "Keep me logged in" controls session lifetime
+            if keep_logged_in:
+                # Persist across browser close for SESSION_COOKIE_AGE seconds
+                request.session.set_expiry(43200)  # 12 hours
+            else:
+                # Expire when the browser / tab is closed
+                request.session.set_expiry(0)
+
+            # Honour ?next= redirect if present and safe
+            next_url = request.POST.get('next') or request.GET.get('next')
+            if next_url and next_url.startswith('/'):
+                return redirect(next_url)
+
+            # Role-based redirect
+            if user.is_admin():
+                return redirect('admin_dashboard')
+            elif user.is_manager():
+                return redirect('manager_dashboard')
+            elif user.is_driver():
+                return redirect('driver_dashboard')
+            return redirect('home')
+        else:
+            error = True  # Show error box in template
+
+    return render(request, 'registration/login.html', {
+        'error': error,
+        'next': request.GET.get('next', ''),
+    })
+
 
 @never_cache
 @login_required
@@ -414,10 +474,13 @@ def driver_dashboard(request):
         raised_by=request.user, status='unread'
     ).order_by('-created_at')[:5]
 
+    map_data = get_map_data(active_trip)
+
     return render(request, 'fleet/driver_dashboard.html', {
         'trips': trips[:10],
         'active_trip': active_trip,
         'recent_alerts': recent_alerts,
+        'map_data': map_data,
     })
 
 
@@ -593,27 +656,75 @@ def fleet_registry(request):
             else:
                 messages.error(request, "Description is required to log a maintenance record.")
 
+        elif action == 'upload_vehicle_photo':
+            vehicle_id = request.POST.get('vehicle_id')
+            photo = request.FILES.get('vehicle_photo')
+            if vehicle_id and photo:
+                vehicle = get_object_or_404(Vehicle, id=vehicle_id, company=company)
+                vehicle.vehicle_photo = photo
+                vehicle.save()
+                messages.success(request, f"Photo updated for {vehicle.registration_number}.")
+            else:
+                messages.error(request, "Select a vehicle and choose a photo to upload.")
+
         return redirect('fleet_registry')
 
     today = timezone.now().date()
-    total_vehicles = vehicles.count()
-    valid_vehicles = vehicles.filter(
+
+    # ── Search & Filter ──────────────────────────────────────────────────
+    search_q    = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', 'all')   # all | expiring | action
+    type_filter   = request.GET.get('type', '')         # vehicle_type value
+
+    vehicles = Vehicle.objects.filter(company=company)
+    if search_q:
+        vehicles = vehicles.filter(
+            Q(registration_number__icontains=search_q) |
+            Q(make__icontains=search_q) |
+            Q(model__icontains=search_q)
+        )
+    if type_filter:
+        vehicles = vehicles.filter(vehicle_type=type_filter)
+
+    thirty_days = today + timezone.timedelta(days=30)
+    if status_filter == 'expiring':
+        vehicles = vehicles.filter(
+            Q(rc_expiry__lte=thirty_days, rc_expiry__gte=today) |
+            Q(insurance_expiry__lte=thirty_days, insurance_expiry__gte=today) |
+            Q(puc_expiry__lte=thirty_days, puc_expiry__gte=today) |
+            Q(fitness_expiry__lte=thirty_days, fitness_expiry__gte=today)
+        )
+    elif status_filter == 'action':
+        vehicles = vehicles.filter(
+            Q(rc_expiry__lt=today) | Q(insurance_expiry__lt=today) |
+            Q(puc_expiry__lt=today) | Q(fitness_expiry__lt=today)
+        )
+
+    total_vehicles   = Vehicle.objects.filter(company=company).count()
+    all_vehicles_qs  = Vehicle.objects.filter(company=company)
+    valid_vehicles   = all_vehicles_qs.filter(
         Q(rc_expiry__gt=today) | Q(rc_expiry__isnull=True),
         Q(fitness_expiry__gt=today) | Q(fitness_expiry__isnull=True),
         Q(insurance_expiry__gt=today) | Q(insurance_expiry__isnull=True),
         Q(puc_expiry__gt=today) | Q(puc_expiry__isnull=True),
     ).count()
     expired_vehicles = total_vehicles - valid_vehicles
-    compliance_pct = int(valid_vehicles / total_vehicles * 100) if total_vehicles > 0 else 0
+    compliance_pct   = int(valid_vehicles / total_vehicles * 100) if total_vehicles > 0 else 0
 
     context = {
         'vehicles': vehicles,
+        'all_vehicles': Vehicle.objects.filter(company=company),  # always full list for dropdowns
         'total_vehicles': total_vehicles,
         'valid_vehicles': valid_vehicles,
         'expired_vehicles': expired_vehicles,
         'compliance_percentage': compliance_pct,
         'today': today,
+        'thirty_days': thirty_days,
         'form': VehicleForm(),
+        'search_q': search_q,
+        'status_filter': status_filter,
+        'type_filter': type_filter,
+        'vehicle_type_choices': Vehicle.VEHICLE_TYPE_CHOICES,
     }
     return render(request, 'fleet/fleet_registry.html', context)
 
@@ -728,6 +839,24 @@ def driver_directory(request):
             driver.delete()
             messages.success(request, "Driver removed.")
 
+        elif action == 'evaluate_driver':
+            driver_id = request.POST.get('driver_id')
+            driver = get_object_or_404(User, id=driver_id, role='driver', company=company)
+            safety = request.POST.get('safety_score')
+            efficiency = request.POST.get('efficiency_score')
+            punctuality = request.POST.get('punctuality_score')
+            notes = request.POST.get('performance_notes')
+            if safety and efficiency and punctuality and notes:
+                driver.manager_safety_score = int(safety)
+                driver.manager_efficiency_score = int(efficiency)
+                driver.manager_punctuality_score = int(punctuality)
+                driver.manager_performance_score = (int(safety) + int(efficiency) + int(punctuality)) // 3
+                driver.manager_performance_notes = notes
+                driver.save()
+                messages.success(request, f"Evaluated driver {driver.first_name} {driver.last_name}.")
+            else:
+                messages.error(request, "Evaluation requires all scores and notes.")
+
         return redirect('driver_directory')
 
     import datetime
@@ -780,6 +909,41 @@ def trip_allocation(request):
             )
             messages.success(request, f"Trip allocated to {driver.get_full_name() or driver.username}.")
             return redirect('trip_allocation')
+        elif action == 'assign_logiloop_load':
+            load_id = request.POST.get('load_id')
+            vehicle_id = request.POST.get('vehicle_id')
+            driver_id = request.POST.get('driver_id')
+            load = get_object_or_404(GlobalLoadPool, id=load_id)
+            vehicle = get_object_or_404(Vehicle, id=vehicle_id, company=company)
+            driver = get_object_or_404(User, id=driver_id, role='driver', company=company)
+            
+            dist = 0
+            if load.origin_lat and load.origin_lon and load.destination_lat and load.destination_lon:
+                dist = int(haversine(load.origin_lat, load.origin_lon, load.destination_lat, load.destination_lon))
+                
+            trip = Trip.objects.create(
+                company=company,
+                vehicle=vehicle,
+                driver=driver,
+                start_location=f"Lat {load.origin_lat}, Lon {load.origin_lon}",
+                end_location=f"Lat {load.destination_lat}, Lon {load.destination_lon}",
+                goods_type=load.cargo_type,
+                goods_name="Marketplace Load",
+                status='approved',
+                total_distance_km=dist or 200,
+            )
+            load.is_fulfilled = True
+            load.save()
+            
+            Alert.objects.create(
+                company=company,
+                trip=trip,
+                raised_by=request.user,
+                alert_type='trip_assigned',
+                message=f"LogiLoop Load assigned: {trip.start_location} → {trip.end_location}.",
+            )
+            messages.success(request, f"Marketplace Load assigned to {vehicle.registration_number}.")
+            return redirect('trip_allocation')
         else:
             form = TripCreateForm(request.POST, company=company)
             if form.is_valid():
@@ -816,6 +980,15 @@ def trip_allocation(request):
     busy_drivers = Trip.objects.filter(status='in_progress', company=company).values_list('driver_id', flat=True)
     available_drivers = User.objects.filter(role='driver', company=company).exclude(id__in=busy_drivers)
 
+    busy_vehicles = Trip.objects.filter(status__in=['pending', 'approved', 'in_progress'], company=company).values_list('vehicle_id', flat=True)
+    available_vehicles = Vehicle.objects.filter(company=company).exclude(id__in=busy_vehicles)
+
+    open_loads = GlobalLoadPool.objects.filter(is_fulfilled=False).filter(
+        Q(visibility='PUBLIC') | 
+        Q(origin_company=company) | 
+        Q(visibility='PARTNER')
+    ).order_by('-id')
+
     # Unassigned = pending trips that have NO driver assigned yet
     unassigned_trips = Trip.objects.filter(
         status='pending', company=company, driver__isnull=True
@@ -834,6 +1007,8 @@ def trip_allocation(request):
         'form': form,
         'unassigned_trips': unassigned_trips,
         'available_drivers': available_drivers,
+        'available_vehicles': available_vehicles,
+        'open_loads': open_loads,
         'urgent_trips': urgent_trips,
         'urgent_count': urgent_trips.count(),
         'now': now,
@@ -1362,14 +1537,25 @@ def driver_revenue(request):
     on_time = completed_trips.filter(maintenance_notes__isnull=True).count()
     punctuality_score = round((on_time / total_completed) * 100) if total_completed > 0 else 90
 
-    # Peer status
-    avg_safety = safety_score  # single driver context; placeholder
-    if safety_score >= 95:
-        peer_status = "Outstanding safety record this month. You're in the top 5% of our fleet."
-    elif safety_score >= 80:
-        peer_status = "Good performance. You're in the top 25% of our fleet this month."
+    # Override with manager scores if provided
+    if driver.manager_safety_score is not None:
+        safety_score = driver.manager_safety_score
+    if driver.manager_efficiency_score is not None:
+        efficiency_score = driver.manager_efficiency_score
+    if driver.manager_punctuality_score is not None:
+        punctuality_score = driver.manager_punctuality_score
+
+    # Peer status & Manager Evaluation
+    manager_score = driver.manager_performance_score
+    if driver.manager_performance_notes:
+        peer_status = driver.manager_performance_notes
     else:
-        peer_status = "Keep improving! Reduce alerts to climb the fleet rankings."
+        if safety_score >= 95:
+            peer_status = "Outstanding safety record this month. You're in the top 5% of our fleet."
+        elif safety_score >= 80:
+            peer_status = "Good performance. You're in the top 25% of our fleet this month."
+        else:
+            peer_status = "Keep improving! Reduce alerts to climb the fleet rankings."
 
     # ── Payout history ──────────────────────────────────────
     payrolls = Payroll.objects.filter(
@@ -1392,6 +1578,7 @@ def driver_revenue(request):
         'efficiency_score':  efficiency_score,
         'punctuality_score': punctuality_score,
         'peer_status':       peer_status,
+        'manager_score':     manager_score,
         'payrolls':          payrolls,
         'today':             today,
         'current_month':     today.strftime('%B %Y'),
@@ -1444,6 +1631,38 @@ def models_updated_at_for_schedule():
     return timezone.now()
 
 
+def get_map_data(active_trip):
+    if not active_trip or not active_trip.vehicle:
+        return {}
+    v = active_trip.vehicle
+    lat  = float(v.current_latitude  or 20.5937)
+    lng  = float(v.current_longitude or 78.9629)
+    speed = float(v.current_speed or 0)
+    heading = v.current_heading or 'North'
+
+    total_km     = active_trip.total_distance_km or 0
+    start_odo    = active_trip.start_odometer or v.current_odometer
+    traveled_km  = max(0, v.current_odometer - start_odo)
+    remaining_km = max(0, total_km - traveled_km)
+
+    avg_speed = speed if speed > 10 else 60
+    eta_hours = remaining_km / avg_speed if avg_speed > 0 else 0
+    eta_h = int(eta_hours)
+    eta_m = int((eta_hours - eta_h) * 60)
+
+    return {
+        'lat': lat, 'lng': lng,
+        'speed': speed, 'heading': heading,
+        'reg': v.registration_number,
+        'start': active_trip.start_location,
+        'end':   active_trip.end_location,
+        'total_km':    total_km,
+        'traveled_km': traveled_km,
+        'remaining_km': remaining_km,
+        'eta_display': f"{eta_h:02d}h {eta_m:02d}m",
+    }
+
+
 # ══════════════════════════════════════════════════════════
 #  DRIVER – ROUTE ANALYTICS
 # ══════════════════════════════════════════════════════════
@@ -1452,7 +1671,6 @@ def models_updated_at_for_schedule():
 @driver_required
 def driver_route_analytics(request):
     from django.conf import settings
-    import math
 
     driver  = request.user
     company = driver.company
@@ -1463,37 +1681,7 @@ def driver_route_analytics(request):
         .first()
     )
 
-    map_data = {}
-    if active_trip and active_trip.vehicle:
-        v = active_trip.vehicle
-        lat  = float(v.current_latitude  or 20.5937)   # default: India center
-        lng  = float(v.current_longitude or 78.9629)
-        speed = float(v.current_speed or 0)
-        heading = v.current_heading or 'North'
-
-        # Remaining distance estimate
-        total_km     = active_trip.total_distance_km or 0
-        start_odo    = active_trip.start_odometer or v.current_odometer
-        traveled_km  = max(0, v.current_odometer - start_odo)
-        remaining_km = max(0, total_km - traveled_km)
-
-        # ETA estimate (avg 60 km/h if speed = 0)
-        avg_speed = speed if speed > 10 else 60
-        eta_hours = remaining_km / avg_speed if avg_speed > 0 else 0
-        eta_h = int(eta_hours)
-        eta_m = int((eta_hours - eta_h) * 60)
-
-        map_data = {
-            'lat': lat, 'lng': lng,
-            'speed': speed, 'heading': heading,
-            'reg': v.registration_number,
-            'start': active_trip.start_location,
-            'end':   active_trip.end_location,
-            'total_km':    total_km,
-            'traveled_km': traveled_km,
-            'remaining_km': remaining_km,
-            'eta_display': f"{eta_h:02d}h {eta_m:02d}m",
-        }
+    map_data = get_map_data(active_trip)
 
     return render(request, 'fleet/driver_route_analytics.html', {
         'active_trip': active_trip,
@@ -1536,7 +1724,6 @@ def driver_vehicle_health(request):
                 raised_by=driver,
                 vehicle=vehicle,
                 alert_type='fault_report',
-                severity='high',
                 message=f"🚨 FAULT REPORTED by {driver.get_full_name() or driver.username} "
                         f"[{vehicle.registration_number}]: {fault_desc}",
                 status='unread',

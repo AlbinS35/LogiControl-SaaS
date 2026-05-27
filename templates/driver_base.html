@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,18 +9,60 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.5/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
+        /* ========== THEME VARIABLES ========== */
+        :root,
+        [data-theme="light"] {
             --primary-blue: #0b4a99;
-            --sidebar-bg: #f8fafc;
+            --sidebar-bg: #ffffff;
+            --sidebar-border: #e2e8f0;
             --active-item: #eef2ff;
             --text-dark: #1e293b;
             --text-muted: #64748b;
+            --body-bg: #f1f5f9;
+            --navbar-bg: #ffffff;
+            --navbar-border: #e2e8f0;
+            --card-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --input-bg: #f8fafc;
+            --input-border: #e2e8f0;
+            --input-text: #1e293b;
+            --input-focus-bg: #ffffff;
+            --divider: #f1f5f9;
+            --badge-bg: #eff6ff;
+            --badge-color: #0b4a99;
+            --disabled-bg: #f1f5f9;
+            --disabled-text: #64748b;
+        }
+
+        [data-theme="dark"] {
+            --primary-blue: #4d8de8;
+            --sidebar-bg: #1a2236;
+            --sidebar-border: #2d3a52;
+            --active-item: #1e3a6e;
+            --text-dark: #e2e8f0;
+            --text-muted: #94a3b8;
+            --body-bg: #0f172a;
+            --navbar-bg: #1a2236;
+            --navbar-border: #2d3a52;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --input-bg: #0f172a;
+            --input-border: #334155;
+            --input-text: #e2e8f0;
+            --input-focus-bg: #1e293b;
+            --divider: #2d3a52;
+            --badge-bg: #1e3a6e;
+            --badge-color: #93c5fd;
+            --disabled-bg: #1e293b;
+            --disabled-text: #64748b;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
+            background-color: var(--body-bg);
+            color: var(--text-dark);
             overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .driver-layout {
@@ -31,18 +73,19 @@
         /* Sidebar */
         .driver-sidebar {
             width: 260px;
-            background-color: white;
-            border-right: 1px solid #e2e8f0;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
             position: fixed;
             height: 100vh;
             z-index: 1000;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         .sidebar-user-info {
             padding: 2rem 1.5rem;
-            border-bottom: 1px solid #f1f5f9;
+            border-bottom: 1px solid var(--divider);
         }
 
         .sidebar-user-info h6 {
@@ -82,7 +125,7 @@
 
         .nav-link-custom:hover {
             color: var(--primary-blue);
-            background-color: #f8fafc;
+            background-color: var(--divider);
         }
 
         .nav-link-custom.active {
@@ -102,16 +145,17 @@
 
         /* Top Nav */
         .driver-navbar {
-            background-color: white;
+            background-color: var(--navbar-bg);
             padding: 0 2rem;
             height: 64px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid var(--navbar-border);
             position: sticky;
             top: 0;
             z-index: 900;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
 
         .brand-logo {
@@ -150,8 +194,44 @@
             padding: 2rem;
             flex-grow: 1;
         }
+
+        /* ========== DARK MODE GLOBAL OVERRIDES ========== */
+        [data-theme="dark"] .text-dark { color: var(--text-dark) !important; }
+        [data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
+        [data-theme="dark"] .bg-white { background-color: var(--card-bg) !important; }
+        [data-theme="dark"] .bg-light { background-color: var(--body-bg) !important; }
+        [data-theme="dark"] .border,
+        [data-theme="dark"] .border-bottom { border-color: var(--card-border) !important; }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--input-text) !important;
+        }
+        [data-theme="dark"] .form-control:focus,
+        [data-theme="dark"] .form-select:focus {
+            background-color: var(--input-focus-bg) !important;
+            border-color: var(--primary-blue) !important;
+            box-shadow: 0 0 0 0.2rem rgba(77,141,232,0.18) !important;
+        }
+        [data-theme="dark"] .input-group-text {
+            background-color: var(--input-bg) !important;
+            border-color: var(--input-border) !important;
+            color: var(--text-muted) !important;
+        }
+        [data-theme="dark"] .shadow-sm { box-shadow: 0 1px 4px rgba(0,0,0,0.35) !important; }
+        [data-theme="dark"] .btn-outline-danger { border-color: #f87171; color: #f87171; }
+        [data-theme="dark"] .btn-outline-danger:hover { background-color: #f87171; color: #fff; }
+        [data-theme="dark"] .form-text { color: var(--text-muted) !important; }
     </style>
     {% block extra_css %}{% endblock %}
+    <!-- Apply theme before first paint to prevent flash -->
+    <script>
+        (function() {
+            var saved = localStorage.getItem('logicontrol-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
 <body>
 
@@ -217,13 +297,18 @@
             <a href="#" class="brand-logo">LogiControl</a>
             
             <div class="nav-tabs-custom">
-                <a href="#" class="nav-tab-item active">STATUS</a>
-                <a href="#" class="nav-tab-item">FUEL</a>
-                <a href="#" class="nav-tab-item">HEALTH</a>
+                <a href="{% url 'driver_dashboard' %}" class="nav-tab-item {% if request.resolver_match.url_name == 'driver_dashboard' %}active{% endif %}">STATUS</a>
+                {% if active_trip %}
+                <a href="{% url 'driver_fuel_registry' %}" class="nav-tab-item {% if request.resolver_match.url_name == 'driver_fuel_registry' %}active{% endif %}">FUEL</a>
+                <a href="{% url 'driver_vehicle_health' %}" class="nav-tab-item {% if request.resolver_match.url_name == 'driver_vehicle_health' %}active{% endif %}">HEALTH</a>
+                {% else %}
+                <a href="#" class="nav-tab-item disabled" style="opacity:0.45;cursor:not-allowed;" title="Available when a trip is assigned">FUEL</a>
+                <a href="#" class="nav-tab-item disabled" style="opacity:0.45;cursor:not-allowed;" title="Available when a trip is assigned">HEALTH</a>
+                {% endif %}
             </div>
 
             <div class="d-flex align-items-center gap-3">
-                <a href="#" class="text-muted fs-5" title="Notifications"><i class="bi bi-bell"></i></a>
+                <a href="javascript:void(0)" class="text-muted fs-5" title="Notifications" onclick="alert('No new notifications');"><i class="bi bi-bell"></i></a>
                 <a href="{% url 'driver_settings' %}" class="text-muted fs-5" title="My Profile"><i class="bi bi-person-circle"></i></a>
             </div>
         </nav>

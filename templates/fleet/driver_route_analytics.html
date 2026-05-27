@@ -2,42 +2,49 @@
 {% block title %}Route Analytics – LogiControl India{% endblock %}
 
 {% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .map-wrap { position:relative; border-radius:1rem; overflow:hidden; height:480px; background:#e8eaed; }
     #gmap     { width:100%; height:100%; }
 
     /* Sidebar panel */
-    .route-panel { background:white; border-radius:1rem; border:1px solid #e2e8f0; overflow:hidden; }
-    .rp-section  { padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; }
-    .rp-label    { font-size:0.62rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; }
-    .rp-value    { font-size:1.1rem; font-weight:800; color:#1e293b; }
+    .route-panel { background:var(--card-bg,white); border-radius:1rem; border:1px solid var(--card-border,#e2e8f0); overflow:hidden; }
+    .rp-section  { padding:1.25rem 1.5rem; border-bottom:1px solid var(--divider,#f1f5f9); }
+    .rp-label    { font-size:0.62rem; font-weight:700; color:var(--text-muted,#64748b); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.2rem; }
+    .rp-value    { font-size:1.1rem; font-weight:800; color:var(--text-dark,#1e293b); }
     .rp-value-green { color:#22c55e; }
 
     /* Progress bar */
-    .trip-bar    { background:#e2e8f0; border-radius:50px; height:8px; margin:0.5rem 0; overflow:hidden; }
+    .trip-bar    { background:var(--card-border,#e2e8f0); border-radius:50px; height:8px; margin:0.5rem 0; overflow:hidden; }
     .trip-bar-fill { height:100%; border-radius:50px; background:linear-gradient(90deg,#0b4a99,#3b82f6); transition:width 0.8s ease; }
 
     /* Floating waypoint buttons */
-    .waypoint-btns { position:absolute; bottom:1.5rem; right:1rem; display:flex; flex-direction:column; gap:0.6rem; z-index:10; }
+    .waypoint-btns { position:absolute; bottom:1.5rem; right:1rem; display:flex; flex-direction:column; gap:0.6rem; z-index:1000; }
     .wp-btn        { display:flex; align-items:center; gap:0.6rem; background:white; border:none;
                      border-radius:50px; padding:0.65rem 1.2rem; font-size:0.82rem; font-weight:700;
                      color:#1e293b; box-shadow:0 4px 16px rgba(0,0,0,0.18); cursor:pointer; transition:box-shadow 0.2s; }
-    .wp-btn:hover  { box-shadow:0 6px 24px rgba(0,0,0,0.25); }
+    .wp-btn:hover  { box-shadow:0 6px 24px rgba(0,0,0,0.25); transform: translateY(-1px); }
+    .wp-btn.active-poi { background:#0b4a99; color:white; box-shadow:0 6px 24px rgba(11,74,153,0.4); }
+    .wp-btn.active-poi i { color:white !important; }
     .wp-btn.emergency { background:#ef4444; color:white; }
 
     /* Current position chip */
     .pos-chip { position:absolute; top:1rem; right:1rem; background:white; border-radius:0.75rem;
-                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:10; min-width:180px; }
+                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; min-width:180px; }
     .pos-chip .speed  { font-size:1.6rem; font-weight:900; color:#0b4a99; line-height:1; }
     .pos-chip .label  { font-size:0.62rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; }
 
     /* Segment chip */
     .seg-chip { position:absolute; top:1rem; left:1rem; background:white; border-radius:0.75rem;
-                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:10; }
+                padding:0.75rem 1.25rem; box-shadow:0 4px 16px rgba(0,0,0,0.15); z-index:1000; }
     .seg-chip .seg-reg  { font-weight:800; font-size:0.9rem; color:#0b4a99; }
     .seg-chip .seg-sub  { font-size:0.75rem; color:#64748b; }
 
-    .no-trip-state { text-align:center; padding:4rem 2rem; background:white; border-radius:1rem; border:1px solid #e2e8f0; }
+    .no-trip-state { text-align:center; padding:4rem 2rem; background:var(--card-bg,white); border-radius:1rem; border:1px solid var(--card-border,#e2e8f0); }
+
+    /* Leaflet attribution tweak */
+    .leaflet-control-attribution { font-size:0.6rem !important; }
 </style>
 {% endblock %}
 
@@ -96,17 +103,17 @@
 
             <!-- Waypoint FABs -->
             <div class="waypoint-btns">
-                <button class="wp-btn" onclick="searchNearby('gas_station')" id="fuelBtn">
-                    <i class="bi bi-fuel-pump" style="color:#0b4a99;"></i> Nearby Fuel (Partners)
+                <button class="wp-btn" onclick="searchNearby('fuel')" id="fuelBtn">
+                    <i class="bi bi-fuel-pump" style="color:#f59e0b;"></i> Fuel Stations
                 </button>
-                <button class="wp-btn" onclick="searchNearby('restaurant')" id="restBtn">
-                    <i class="bi bi-cup-hot" style="color:#f59e0b;"></i> Restrooms &amp; Restaurants
+                <button class="wp-btn" onclick="searchNearby('food')" id="foodBtn">
+                    <i class="bi bi-cup-hot" style="color:#10b981;"></i> Food Stops
                 </button>
-                <button class="wp-btn emergency" onclick="searchNearby('hospital')" id="emergBtn">
-                    <i class="bi bi-plus-circle-fill"></i> Emergency Services
+                <button class="wp-btn" onclick="searchNearby('service')" id="serviceBtn">
+                    <i class="bi bi-wrench-adjustable" style="color:#6366f1;"></i> Service Centers
                 </button>
                 <button class="wp-btn" onclick="shareTracking()" id="shareBtn">
-                    <i class="bi bi-share" style="color:#0b4a99;"></i> Share Tracking Link
+                    <i class="bi bi-share" style="color:#0b4a99;"></i> Share Tracking
                 </button>
             </div>
         </div>
@@ -137,8 +144,7 @@
                 </div>
                 <div class="trip-bar">
                     {% if map_data.total_km and map_data.total_km > 0 %}
-                    <div class="trip-bar-fill" style="width:{{ map_data.traveled_km|floatformat:0 }}px;max-width:100%;
-                         width:{% widthratio map_data.traveled_km map_data.total_km 100 %}%;"></div>
+                    <div class="trip-bar-fill trip-progress-el" data-width-px="{{ map_data.traveled_km|floatformat:0 }}" data-width-pct="{% widthratio map_data.traveled_km map_data.total_km 100 %}"></div>
                     {% else %}
                     <div class="trip-bar-fill" style="width:0%;"></div>
                     {% endif %}
@@ -206,110 +212,18 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if active_trip and maps_api_key %}
-<script>
-const MAP_DATA = {
-    lat: {{ map_data.lat }},
-    lng: {{ map_data.lng }},
-    reg: "{{ map_data.reg }}",
-    start: "{{ map_data.start }}",
-    end: "{{ map_data.end }}",
-};
-let map, placesService, currentMarkers = [];
-
-function initMap() {
-    const vehiclePos = { lat: MAP_DATA.lat, lng: MAP_DATA.lng };
-
-    map = new google.maps.Map(document.getElementById("gmap"), {
-        zoom: 9,
-        center: vehiclePos,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [
-            { featureType:"poi", elementType:"labels", stylers:[{visibility:"off"}] },
-            { featureType:"transit", stylers:[{visibility:"off"}] }
-        ]
-    });
-
-    placesService = new google.maps.places.PlacesService(map);
-
-    // Truck marker
-    const truckIcon = {
-        url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-        scaledSize: new google.maps.Size(40, 40),
-    };
-    new google.maps.Marker({
-        position: vehiclePos,
-        map: map,
-        title: MAP_DATA.reg,
-        icon: truckIcon,
-        animation: google.maps.Animation.DROP,
-    });
-
-    // Draw route via Directions API
-    const dirService  = new google.maps.DirectionsService();
-    const dirRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers: false,
-        polylineOptions: {
-            strokeColor: '#0b4a99',
-            strokeWeight: 4,
-            strokeOpacity: 0.8,
-        }
-    });
-    dirRenderer.setMap(map);
-
-    dirService.route({
-        origin: MAP_DATA.start,
-        destination: MAP_DATA.end,
-        travelMode: google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
-        if (status === 'OK') dirRenderer.setDirections(result);
-    });
-}
-
-function searchNearby(type) {
-    currentMarkers.forEach(m => m.setMap(null));
-    currentMarkers = [];
-
-    const iconMap = {
-        'gas_station': '⛽',
-        'restaurant':  '🍽️',
-        'hospital':    '🏥',
-    };
-    placesService.nearbySearch({
-        location: { lat: MAP_DATA.lat, lng: MAP_DATA.lng },
-        radius: 10000,
-        type: type,
-    }, (results, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK) return;
-        results.slice(0, 6).forEach(place => {
-            const marker = new google.maps.Marker({
-                position: place.geometry.location,
-                map: map,
-                title: place.name,
-                label: { text: iconMap[type] || '📍', fontSize: '18px' },
-            });
-            const info = new google.maps.InfoWindow({
-                content: `<strong>${place.name}</strong><br>${place.vicinity}`
-            });
-            marker.addListener('click', () => info.open(map, marker));
-            currentMarkers.push(marker);
-        });
-    });
-}
-
-function shareTracking() {
-    const link = `${window.location.origin}/driver/route/`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert('Tracking link copied to clipboard!');
-    });
-}
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&libraries=places&callback=initMap" async defer></script>
-{% endif %}
+{% include 'fleet/leaflet_map_scripts.html' %}
 
 <script>
+// Trip progress bar animation
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.trip-progress-el').forEach(el => {
+        const pct = el.getAttribute('data-width-pct');
+        if (pct) el.style.width = pct + '%';
+    });
+});
+// Auto-dismiss toasts
 setTimeout(() => { document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')); }, 4000);
 </script>
 {% endblock %}
+

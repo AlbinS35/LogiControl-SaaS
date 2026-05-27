@@ -95,6 +95,28 @@ class User(AbstractUser):
         help_text="Monthly base salary (INR) — set by manager"
     )
 
+    # Manager Performance Evaluation
+    manager_performance_score = models.IntegerField(
+        null=True, blank=True, 
+        help_text="Manager overall evaluation score (0-100)"
+    )
+    manager_safety_score = models.IntegerField(
+        null=True, blank=True, 
+        help_text="Manager safety score (0-100)"
+    )
+    manager_efficiency_score = models.IntegerField(
+        null=True, blank=True, 
+        help_text="Manager efficiency score (0-100)"
+    )
+    manager_punctuality_score = models.IntegerField(
+        null=True, blank=True, 
+        help_text="Manager punctuality score (0-100)"
+    )
+    manager_performance_notes = models.TextField(
+        null=True, blank=True,
+        help_text="Manager evaluation notes"
+    )
+
     def is_admin(self):
         return self.role == 'admin'
 
@@ -153,6 +175,9 @@ class Vehicle(models.Model):
     )
     vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPE_CHOICES, default='other')
     loading_capacity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Capacity in tons")
+
+    # Vehicle Photo
+    vehicle_photo = models.ImageField(upload_to='vehicles/photos/', null=True, blank=True)
 
     # Document Vault
     rc_document = models.FileField(upload_to='documents/rc/', null=True, blank=True)
@@ -415,6 +440,7 @@ class Alert(models.Model):
         ('trip_assigned', 'Trip Assigned'),
         ('fuel_approval', 'Fuel Bill Approval'),
         ('panic', 'Emergency / SOS'),
+        ('fault_report', 'Vehicle Fault Report'),
     )
     STATUS_CHOICES = (
         ('unread', 'Unread'),

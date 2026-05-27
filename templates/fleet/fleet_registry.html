@@ -10,11 +10,31 @@
         <a href="{% url 'driver_directory' %}" class="text-muted text-decoration-none fw-bold small ms-3">DRIVERS</a>
         <a href="{% url 'manager_dashboard' %}" class="text-muted text-decoration-none fw-bold small ms-3">ALERTS</a>
     </div>
-    <div class="search-bar" style="background: #f1f5f9; border: none; width: 300px;">
-        <i class="bi bi-search text-muted"></i>
-        <input type="text" placeholder="Search vehicles..." style="background: transparent;">
-    </div>
+    <form method="get" action="{% url 'fleet_registry' %}" class="d-flex" id="searchForm">
+        {% if status_filter != 'all' %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+        {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
+        <div class="search-bar" style="background: #f1f5f9; border: none; width: 300px;">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" name="q" value="{{ search_q }}" placeholder="Search vehicles..." style="background: transparent;" id="vehicleSearchInput">
+        </div>
+    </form>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Camera overlay on vehicle thumbnail */
+.vehicle-thumb-wrap {
+    cursor: pointer;
+}
+.vehicle-thumb-wrap:hover .vehicle-cam-overlay {
+    opacity: 1 !important;
+}
+/* Keep all card content inside the card */
+.vehicle-item .card-body {
+    flex-wrap: nowrap;
+}
+</style>
 {% endblock %}
 
 {% block enterprise_content %}
@@ -30,13 +50,48 @@
 </div>
 {% endif %}
 
-<div class="d-flex justify-content-between align-items-end mb-4">
+<div class="d-flex justify-content-between align-items-end mb-3">
     <div>
         <h2 class="fw-bold text-dark mb-1">Vehicle Document Management</h2>
         <p class="text-muted mb-0">Ensure compliance by keeping RC, Insurance, and PUC certificates up-to-date across your fleet.</p>
     </div>
     <div>
-        <button class="btn btn-outline-primary fw-bold px-4 rounded-1"><i class="bi bi-filter"></i> FILTER FLEET</button>
+        <button class="btn btn-outline-primary fw-bold px-4 rounded-1" id="filterToggleBtn" onclick="toggleFilterPanel()">
+            <i class="bi bi-filter"></i> FILTER FLEET
+            {% if type_filter or status_filter != 'all' %}<span class="badge bg-primary ms-1" style="font-size:0.65rem;">ON</span>{% endif %}
+        </button>
+    </div>
+</div>
+
+<!-- Filter Panel (slide-down) -->
+<div id="filterPanel" class="card border-0 shadow-sm rounded-3 mb-4" style="display:{% if type_filter or status_filter != 'all' %}block{% else %}none{% endif %};">
+    <div class="card-body px-4 py-3">
+        <form method="get" action="{% url 'fleet_registry' %}" class="row g-3 align-items-end" id="filterForm">
+            {% if search_q %}<input type="hidden" name="q" value="{{ search_q }}">{% endif %}
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase text-muted" style="letter-spacing:0.4px;">Vehicle Type</label>
+                <select name="type" class="form-select form-select-sm">
+                    <option value="">All Types</option>
+                    {% for val, label in vehicle_type_choices %}
+                    <option value="{{ val }}" {% if type_filter == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-uppercase text-muted" style="letter-spacing:0.4px;">Compliance Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Vehicles</option>
+                    <option value="expiring" {% if status_filter == 'expiring' %}selected{% endif %}>Expiring Soon (30 days)</option>
+                    <option value="action" {% if status_filter == 'action' %}selected{% endif %}>Action Required</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm fw-bold px-4">
+                    <i class="bi bi-funnel me-1"></i>Apply Filters
+                </button>
+                <a href="{% url 'fleet_registry' %}" class="btn btn-outline-secondary btn-sm fw-bold px-3">Clear</a>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -56,7 +111,7 @@
                         <label class="small text-muted fw-bold text-uppercase mb-1">Select Vehicle</label>
                         <select class="form-select" name="vehicle_id" required>
                             <option value="">-- Choose Vehicle --</option>
-                            {% for v in vehicles %}
+                            {% for v in all_vehicles %}
                                 <option value="{{ v.id }}">{{ v.registration_number }} - {{ v.make }}</option>
                             {% endfor %}
                         </select>
@@ -114,84 +169,170 @@
     
     <!-- Right Column: Vehicle List -->
     <div class="col-lg-8">
-        <!-- Sub Tabs -->
+        <!-- Sub Tabs (server-side filtering) -->
         <ul class="nav nav-tabs border-bottom mb-4" id="fleetFilterTabs">
             <li class="nav-item">
-                <a class="nav-link active fw-bold border-bottom border-primary border-2 px-4 text-primary" href="#" data-filter="all">All Vehicles</a>
+                <a class="nav-link fw-bold px-4 {% if status_filter == 'all' and not type_filter %}active text-primary border-bottom border-primary border-2{% else %}text-muted{% endif %}"
+                   href="{% url 'fleet_registry' %}{% if search_q %}?q={{ search_q }}{% endif %}">All Vehicles</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-muted fw-bold px-4" href="#" data-filter="expiring">Expiring Soon</a>
+                <a class="nav-link fw-bold px-4 {% if status_filter == 'expiring' %}active text-primary border-bottom border-primary border-2{% else %}text-muted{% endif %}"
+                   href="{% url 'fleet_registry' %}?status=expiring{% if search_q %}&q={{ search_q }}{% endif %}">Expiring Soon</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link text-muted fw-bold px-4" href="#" data-filter="action">Action Required ({{ expired_vehicles }})</a>
+                <a class="nav-link fw-bold px-4 {% if status_filter == 'action' %}active text-primary border-bottom border-primary border-2{% else %}text-muted{% endif %}"
+                   href="{% url 'fleet_registry' %}?status=action{% if search_q %}&q={{ search_q }}{% endif %}">Action Required ({{ expired_vehicles }})</a>
             </li>
         </ul>
         
+        <!-- Search results info -->
+        {% if search_q or type_filter or status_filter != 'all' %}
+        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+            <span class="text-muted small">
+                <i class="bi bi-funnel text-primary me-1"></i>
+                Showing <strong>{{ vehicles|length }}</strong> vehicle{{ vehicles|length|pluralize }}
+                {% if search_q %} matching "<strong>{{ search_q }}</strong>"{% endif %}
+                {% if type_filter %} · Type: <strong>{{ type_filter }}</strong>{% endif %}
+            </span>
+            <a href="{% url 'fleet_registry' %}" class="text-muted small"><i class="bi bi-x-circle me-1"></i>Clear filters</a>
+        </div>
+        {% endif %}
+
         <!-- Vehicles -->
         <div class="d-flex flex-column gap-3" id="vehiclesList">
             {% for vehicle in vehicles %}
-            <div class="card border-0 shadow-sm rounded-3 vehicle-item">
-                <div class="card-body p-3 d-flex align-items-center justify-content-between">
-                    <!-- Vehicle Info -->
-                    <div class="d-flex align-items-center" style="width: 25%;">
-                        <div class="bg-dark rounded me-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; overflow: hidden;">
-                            <i class="bi bi-truck text-white fs-4"></i>
+            <div class="card border-0 shadow-sm rounded-3 vehicle-item overflow-hidden"
+                 data-status="{% if vehicle.rc_expiry and vehicle.rc_expiry < today or vehicle.insurance_expiry and vehicle.insurance_expiry < today or vehicle.puc_expiry and vehicle.puc_expiry < today or vehicle.fitness_expiry and vehicle.fitness_expiry < today %}action{% elif vehicle.rc_expiry and vehicle.rc_expiry <= thirty_days or vehicle.insurance_expiry and vehicle.insurance_expiry <= thirty_days or vehicle.puc_expiry and vehicle.puc_expiry <= thirty_days or vehicle.fitness_expiry and vehicle.fitness_expiry <= thirty_days %}expiring{% else %}ok{% endif %}">
+                <div class="card-body p-3" style="display:flex;align-items:center;gap:0.75rem;">
+
+                    <!-- Vehicle Photo / Icon with camera hover overlay -->
+                    <div class="vehicle-thumb-wrap" style="position:relative;width:52px;height:52px;flex-shrink:0;"
+                         data-bs-toggle="modal" data-bs-target="#photoModal{{ vehicle.id }}"
+                         title="Click to upload vehicle photo">
+                        <!-- Photo or fallback icon -->
+                        <div class="rounded d-flex align-items-center justify-content-center overflow-hidden"
+                             style="width:52px;height:52px;background:#1e293b;">
+                            {% if vehicle.vehicle_photo %}
+                            <img src="{{ vehicle.vehicle_photo.url }}" alt="{{ vehicle.registration_number }}"
+                                 style="width:100%;height:100%;object-fit:cover;">
+                            {% else %}
+                            <i class="bi bi-truck text-white" style="font-size:1.4rem;"></i>
+                            {% endif %}
                         </div>
-                        <div>
-                            <h6 class="fw-bold text-dark mb-0 fs-5">{{ vehicle.registration_number }}</h6>
-                            <span class="text-muted small">{{ vehicle.make }} {{ vehicle.model }}</span>
+                        <!-- Camera overlay (shown on hover) -->
+                        <div class="vehicle-cam-overlay rounded"
+                             style="position:absolute;inset:0;background:rgba(0,0,0,0.55);border-radius:6px;
+                                    display:flex;align-items:center;justify-content:center;
+                                    opacity:0;transition:opacity 0.2s;cursor:pointer;">
+                            <i class="bi bi-camera-fill text-white" style="font-size:1rem;"></i>
                         </div>
                     </div>
-                    
+
+                    <!-- Vehicle Name -->
+                    <div style="min-width:0;width:22%;flex-shrink:0;">
+                        <h6 class="fw-bold text-dark mb-0" style="font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ vehicle.registration_number }}</h6>
+                        <span class="text-muted" style="font-size:0.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">{{ vehicle.make }} {{ vehicle.model }}</span>
+                    </div>
+
                     <!-- Document Badges -->
-                    <div class="d-flex gap-4">
-                        <div class="text-center">
-                            <div class="text-muted text-uppercase mb-1" style="font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;">RC Copy</div>
+                    <div class="d-flex gap-2 flex-wrap" style="flex:1;min-width:0;">
+                        <div class="text-center" style="min-width:54px;">
+                            <div class="text-muted text-uppercase mb-1" style="font-size:0.58rem;font-weight:700;letter-spacing:0.8px;">RC</div>
                             {% if vehicle.rc_expiry and vehicle.rc_expiry < today %}
-                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-3 py-2">Expired</span>
+                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-2 py-1" style="font-size:0.68rem;">Expired</span>
                             {% else %}
-                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-3 py-2">Valid</span>
+                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-2 py-1" style="font-size:0.68rem;">Valid</span>
                             {% endif %}
                         </div>
-                        <div class="text-center">
-                            <div class="text-muted text-uppercase mb-1" style="font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;">Insurance</div>
+                        <div class="text-center" style="min-width:68px;">
+                            <div class="text-muted text-uppercase mb-1" style="font-size:0.58rem;font-weight:700;letter-spacing:0.8px;">Insurance</div>
                             {% if vehicle.insurance_expiry and vehicle.insurance_expiry < today %}
-                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-2 py-2">Exp: {{ vehicle.insurance_expiry|date:"d M" }}</span>
+                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-2 py-1" style="font-size:0.68rem;">Exp: {{ vehicle.insurance_expiry|date:"d M" }}</span>
                             {% elif vehicle.insurance_expiry %}
-                                <span class="badge bg-warning bg-opacity-10 border border-warning border-opacity-25 text-warning px-2 py-2 text-dark">Exp: {{ vehicle.insurance_expiry|date:"d M" }}</span>
+                                <span class="badge bg-warning bg-opacity-10 border border-warning border-opacity-25 text-warning px-2 py-1 text-dark" style="font-size:0.68rem;">Exp: {{ vehicle.insurance_expiry|date:"d M" }}</span>
                             {% else %}
-                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-3 py-2">Valid</span>
+                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-2 py-1" style="font-size:0.68rem;">Valid</span>
                             {% endif %}
                         </div>
-                        <div class="text-center">
-                            <div class="text-muted text-uppercase mb-1" style="font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;">PUC</div>
+                        <div class="text-center" style="min-width:54px;">
+                            <div class="text-muted text-uppercase mb-1" style="font-size:0.58rem;font-weight:700;letter-spacing:0.8px;">PUC</div>
                             {% if vehicle.puc_expiry and vehicle.puc_expiry < today %}
-                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-3 py-2">Expired</span>
+                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-2 py-1" style="font-size:0.68rem;">Expired</span>
                             {% else %}
-                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-3 py-2">Valid</span>
+                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-2 py-1" style="font-size:0.68rem;">Valid</span>
                             {% endif %}
                         </div>
-                        <div class="text-center">
-                            <div class="text-muted text-uppercase mb-1" style="font-size: 0.6rem; font-weight: 700; letter-spacing: 1px;">Fitness</div>
+                        <div class="text-center" style="min-width:54px;">
+                            <div class="text-muted text-uppercase mb-1" style="font-size:0.58rem;font-weight:700;letter-spacing:0.8px;">Fitness</div>
                             {% if vehicle.fitness_expiry and vehicle.fitness_expiry < today %}
-                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-3 py-2">Expired</span>
+                                <span class="badge bg-danger bg-opacity-10 border border-danger border-opacity-25 text-danger px-2 py-1" style="font-size:0.68rem;">Expired</span>
                             {% else %}
-                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-3 py-2">Valid</span>
+                                <span class="badge bg-success bg-opacity-10 border border-success border-opacity-25 text-success px-2 py-1" style="font-size:0.68rem;">Valid</span>
                             {% endif %}
                         </div>
                     </div>
-                    
-                    <!-- Actions -->
-                    <div class="d-flex gap-2">
-                        <a href="{% url 'vehicle_fuel_insights' vehicle.id %}" class="btn btn-light border text-muted" title="Fuel Insights">
+
+                    <!-- Actions (no camera btn — it's on the thumbnail now) -->
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <a href="{% url 'vehicle_fuel_insights' vehicle.id %}" class="btn btn-light border text-muted btn-sm" title="Fuel Insights">
                             <i class="bi bi-fuel-pump"></i>
                         </a>
-                        <button class="btn btn-light border text-muted" title="Maintenance History"
+                        <button class="btn btn-light border text-muted btn-sm" title="Maintenance History"
                                 data-bs-toggle="modal" data-bs-target="#maintModal{{ vehicle.id }}">
                             <i class="bi bi-wrench-adjustable"></i>
                         </button>
-                        <button class="btn btn-light border text-muted" data-bs-toggle="modal" data-bs-target="#editModal{{ vehicle.id }}"><i class="bi bi-pencil"></i></button>
-                        <button class="btn btn-danger text-white" data-bs-toggle="modal" data-bs-target="#deleteModal{{ vehicle.id }}"><i class="bi bi-trash"></i></button>
+                        <button class="btn btn-light border text-muted btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#editModal{{ vehicle.id }}" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#deleteModal{{ vehicle.id }}" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Photo Upload Modal -->
+            <div class="modal fade" id="photoModal{{ vehicle.id }}" tabindex="-1">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                        <form method="post" action="{% url 'fleet_registry' %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="upload_vehicle_photo">
+                            <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
+                            <div class="modal-header" style="background:#0b4a99;color:white;border-radius:1rem 1rem 0 0;">
+                                <h6 class="modal-title fw-bold"><i class="bi bi-camera me-2"></i>Vehicle Photo</h6>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4">
+                                {% if vehicle.vehicle_photo %}
+                                <div class="text-center mb-3">
+                                    <img src="{{ vehicle.vehicle_photo.url }}" alt="Current photo"
+                                         class="img-fluid rounded-3" style="max-height:160px;object-fit:cover;width:100%;">
+                                    <div class="text-muted small mt-1">Current photo</div>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-3 mb-3" style="background:#f8fafc;border-radius:0.75rem;border:2px dashed #e2e8f0;">
+                                    <i class="bi bi-image text-muted d-block mb-1" style="font-size:2rem;"></i>
+                                    <span class="text-muted small">No photo yet</span>
+                                </div>
+                                {% endif %}
+                                <label class="form-label small fw-bold text-uppercase text-muted">Upload New Photo</label>
+                                <input type="file" name="vehicle_photo" class="form-control" accept="image/*" required
+                                       id="photoInput{{ vehicle.id }}"
+                                       onchange="previewPhoto(this, 'photoPreview{{ vehicle.id }}')">
+                                <img id="photoPreview{{ vehicle.id }}" src="#" alt="Preview"
+                                     class="img-fluid rounded-3 mt-2 d-none" style="max-height:120px;object-fit:cover;width:100%;">
+                                <div class="form-text">JPG, PNG, WEBP — max 5 MB</div>
+                            </div>
+                            <div class="modal-footer border-0 pt-0">
+                                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary fw-bold">
+                                    <i class="bi bi-cloud-arrow-up me-1"></i>Upload
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -491,52 +632,52 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const tabs = document.querySelectorAll('#fleetFilterTabs .nav-link');
-    const vehicles = document.querySelectorAll('.vehicle-item');
+// ── Filter panel toggle ────────────────────────────────────────────────
+function toggleFilterPanel() {
+    const panel = document.getElementById('filterPanel');
+    panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+}
 
-    // Make alerts functional with a simple listener if it's pointing to manager dashboard
-    const alertLink = document.querySelector('a:contains("ALERTS")');
-    if (alertLink && alertLink.getAttribute('href') === '#') {
-        alertLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            alert("No new alerts at this time.");
-        });
-    }
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Update active tab styling
-            tabs.forEach(t => {
-                t.classList.remove('active', 'border-bottom', 'border-primary', 'border-2', 'text-primary');
-                t.classList.add('text-muted');
-            });
-            this.classList.remove('text-muted');
-            this.classList.add('active', 'border-bottom', 'border-primary', 'border-2', 'text-primary');
-
-            const filter = this.getAttribute('data-filter');
-            
-            vehicles.forEach(vehicle => {
-                const hasDanger = vehicle.querySelector('.bg-danger') !== null;
-                const hasWarning = vehicle.querySelector('.bg-warning') !== null;
-                
-                if (filter === 'all') {
-                    vehicle.style.display = 'block';
-                } else if (filter === 'expiring') {
-                    vehicle.style.display = hasWarning ? 'block' : 'none';
-                } else if (filter === 'action') {
-                    vehicle.style.display = hasDanger ? 'block' : 'none';
-                }
-            });
-        });
+// ── Live search: submit on Enter ───────────────────────────────────────
+const searchInput = document.getElementById('vehicleSearchInput');
+if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            document.getElementById('searchForm').submit();
+        }, 400);
     });
-});
+    searchInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(debounceTimer);
+            document.getElementById('searchForm').submit();
+        }
+    });
+}
 
-// Polyfill for :contains
-jQuery.expr[':'].contains = function(a, i, m) {
-  return jQuery(a).text().toUpperCase()
-      .indexOf(m[3].toUpperCase()) >= 0;
-};
+// ── Vehicle photo preview ──────────────────────────────────────────────
+function previewPhoto(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+// ── Thumbnail hover overlay (JS fallback for touch / focus) ────────────
+document.querySelectorAll('.vehicle-thumb-wrap').forEach(function(wrap) {
+    const overlay = wrap.querySelector('.vehicle-cam-overlay');
+    if (!overlay) return;
+    wrap.addEventListener('mouseenter', () => overlay.style.opacity = '1');
+    wrap.addEventListener('mouseleave', () => overlay.style.opacity = '0');
+    // Also show briefly on focus (keyboard nav)
+    wrap.addEventListener('focus', () => overlay.style.opacity = '1');
+    wrap.addEventListener('blur',  () => overlay.style.opacity = '0');
+});
 </script>
 {% endblock %}

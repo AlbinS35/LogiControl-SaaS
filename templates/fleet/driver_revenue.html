@@ -176,7 +176,7 @@
                     <span class="text-success fw-bold">{{ safety_score }}/100</span>
                 </div>
                 <div class="score-bar">
-                    <div class="score-fill fill-green" style="width:{{ safety_score }}%;"></div>
+                    <div class="score-fill fill-green progress-bar-el" data-progress-pct="{{ safety_score }}"></div>
                 </div>
             </div>
 
@@ -187,7 +187,7 @@
                     <span class="text-primary fw-bold">{{ efficiency_score }}/100</span>
                 </div>
                 <div class="score-bar">
-                    <div class="score-fill fill-blue" style="width:{{ efficiency_score }}%;"></div>
+                    <div class="score-fill fill-blue progress-bar-el" data-progress-pct="{{ efficiency_score }}"></div>
                 </div>
             </div>
 
@@ -198,15 +198,32 @@
                     <span class="text-warning fw-bold">{{ punctuality_score }}/100</span>
                 </div>
                 <div class="score-bar">
-                    <div class="score-fill fill-orange" style="width:{{ punctuality_score }}%;"></div>
+                    <div class="score-fill fill-orange progress-bar-el" data-progress-pct="{{ punctuality_score }}"></div>
                 </div>
             </div>
 
-            <!-- Peer Status -->
-            <div class="peer-box">
+            <!-- Manager Evaluation / Peer Status -->
+            {% if manager_score %}
+            <div class="score-row mt-4">
+                <div class="score-label">
+                    <span><i class="bi bi-star-fill me-1 text-info"></i> Manager Rating</span>
+                    <span class="text-info fw-bold">{{ manager_score }}/100</span>
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill progress-bar-el" style="background: linear-gradient(90deg, #38bdf8, #0284c7);" data-progress-pct="{{ manager_score }}"></div>
+                </div>
+            </div>
+            <div class="peer-box" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;">
+                <div style="font-size: 0.65rem; font-weight: 800; text-transform: uppercase; margin-bottom: 0.3rem; color: #15803d;"><i class="bi bi-person-badge me-1"></i> Manager Feedback</div>
+                <i class="bi bi-quote me-1 opacity-50"></i>
+                "{{ peer_status }}"
+            </div>
+            {% else %}
+            <div class="peer-box mt-4">
                 <i class="bi bi-quote me-1"></i>
                 "{{ peer_status }}"
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -273,9 +290,16 @@
 <script>
     // ── Earnings Bar Chart ──────────────────────────────────
     const ctx = document.getElementById('earningsChart').getContext('2d');
-    const labels = {{ weekly_labels|safe }};
-    const values = {{ weekly_values|safe }};
+    const labels = JSON.parse('{{ weekly_labels|safe }}');
+    const values = JSON.parse('{{ weekly_values|safe }}');
     const maxVal = Math.max(...values);
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll('.progress-bar-el').forEach(el => {
+            const pct = el.getAttribute('data-progress-pct');
+            if (pct) el.style.width = pct + '%';
+        });
+    });
 
     new Chart(ctx, {
         type: 'bar',

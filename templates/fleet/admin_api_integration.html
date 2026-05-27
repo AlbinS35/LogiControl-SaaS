@@ -153,7 +153,7 @@
                 <span class="int-stat-val {% if integration.status_cls == 'warning' %}red{% else %}green{% endif %}">{{ integration.uptime }}</span>
             </div>
             <div class="int-progress">
-                <div class="int-fill {% if integration.status_cls == 'warning' %}red{% else %}blue{% endif %}" style="width: {{ integration.uptime|slice:":-1" }}%;"></div>
+                <div class="int-fill {% if integration.status_cls == 'warning' %}red{% else %}blue{% endif %}" style="width: {{ integration.uptime|slice:'-1' }}%;"></div>
             </div>
             
             <div class="int-footer">

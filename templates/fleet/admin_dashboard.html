@@ -19,6 +19,9 @@
     .stat-bottom { font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 0.3rem;}
     .stat-bottom.positive { color: #16a34a; }
 
+    .c-icon-2 { background: #ffedd5; color: #c2410c; }
+    .c-icon-3 { background: #dcfce7; color: #15803d; }
+
     .panel { background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; height: 100%; }
     .panel-dark { background: #111827; border: none; border-radius: 8px; padding: 1.5rem; height: 100%; color: white;}
     
@@ -182,7 +185,7 @@
                     <tr>
                         <td>
                             <div class="company-cell">
-                                <div class="company-icon" style="{% if forloop.counter|divisibleby:2 %}background:#ffedd5; color:#c2410c;{% elif forloop.counter|divisibleby:3 %}background:#dcfce7; color:#15803d;{% endif %}">{{ company.name|make_list|first|upper }}</div>
+                                <div class="company-icon {% if forloop.counter|divisibleby:2 %}c-icon-2{% elif forloop.counter|divisibleby:3 %}c-icon-3{% endif %}">{{ company.name|make_list|first|upper }}</div>
                                 <div>
                                     <p class="company-name">{{ company.name }}</p>
                                     <p class="company-sub">ID: T-{{ company.id|add:"9000" }}</p>
@@ -365,7 +368,7 @@
             </div>
             
             <div class="map-placeholder">
-                <div style="position:absolute; width:100%; height:100%; background:url('data:image/svg+xml;utf8,<svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"2\" cy=\"2\" r=\"1\" fill=\"%23cbd5e1\"/></svg>') repeat; opacity: 0.5;"></div>
+                <div style="position:absolute; width:100%; height:100%; background:url('data:image/svg+xml;utf8,<svg width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22 xmlns=%22http://www.w3.org/2000/svg%22><circle cx=%222%22 cy=%222%22 r=%221%22 fill=%22%23cbd5e1%22/></svg>') repeat; opacity: 0.5;"></div>
                 <div class="map-badge"><div class="map-pulse"></div> Geo-Routing Active</div>
             </div>
         </div>

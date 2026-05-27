@@ -207,27 +207,35 @@
 
 {% block extra_js %}
 {% if vehicle %}
+<script id="vehicle-data-json" type="application/json">
+{
+    "engine": {{ vehicle.engine_performance|default:0 }},
+    "tire": {{ vehicle.tire_integrity|default:0 }},
+    "battery": {{ vehicle.battery_life|default:0 }}
+}
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
+    const vData = JSON.parse(document.getElementById('vehicle-data-json').textContent);
     const r = 40;
     const c = 2 * Math.PI * r;
     
     // Engine
-    const engPct = {{ vehicle.engine_performance }};
+    const engPct = vData.engine;
     const engDash = (engPct / 100) * c;
     setTimeout(() => {
         document.getElementById('circ-engine').style.strokeDasharray = `${engDash}, ${c}`;
     }, 100);
     
     // Tire
-    const tirePct = {{ vehicle.tire_integrity }};
+    const tirePct = vData.tire;
     const tireDash = (tirePct / 100) * c;
     setTimeout(() => {
         document.getElementById('circ-tire').style.strokeDasharray = `${tireDash}, ${c}`;
     }, 300);
     
     // Battery
-    const batPct = {{ vehicle.battery_life }};
+    const batPct = vData.battery;
     const batDash = (batPct / 100) * c;
     setTimeout(() => {
         document.getElementById('circ-battery').style.strokeDasharray = `${batDash}, ${c}`;

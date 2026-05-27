@@ -109,10 +109,10 @@
                         <div class="progress-bar"><div class="progress-fill" style="width: 100%;"></div></div>
                         <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / ∞</span>
                         {% elif company.subscription_tier == 'pro' %}
-                        <div class="progress-bar"><div class="progress-fill" style="width: {% widthratio company.vehicle_count|default:"0" 50 100 %}%;"></div></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: {% widthratio company.vehicle_count|default:'0' 50 100 %}%;"></div></div>
                         <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / 50</span>
                         {% else %}
-                        <div class="progress-bar"><div class="progress-fill {% if company.vehicle_count|default:0 >= 4 %}warning{% endif %}" style="width: {% widthratio company.vehicle_count|default:"0" 5 100 %}%;"></div></div>
+                        <div class="progress-bar"><div class="progress-fill {% if company.vehicle_count|default:0 >= 4 %}warning{% endif %}" style="width: {% widthratio company.vehicle_count|default:'0' 5 100 %}%;"></div></div>
                         <span class="fleet-size-text">{{ company.vehicle_count|default:"0" }} / 5</span>
                         {% endif %}
                     </div>

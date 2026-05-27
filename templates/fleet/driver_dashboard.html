@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block driver_content %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     .header-row {
         display: flex;
@@ -147,83 +149,67 @@
         color: #ea580c;
     }
 
-    /* Map Section */
-    .map-container {
-        background-color: #1e293b;
-        border-radius: 1rem;
-        height: 350px;
-        margin-bottom: 2rem;
+    /* ── Leaflet Map Section ── */
+    .map-wrap {
         position: relative;
+        border-radius: 1rem;
         overflow: hidden;
-        background-image: url('https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1200&q=80');
-        background-size: cover;
-        background-position: center;
+        height: 400px;
+        background: #e8eaed;
+        margin-bottom: 2rem;
     }
+    #gmap { width: 100%; height: 100%; }
 
-    .map-overlay-dark {
+    .waypoint-btns {
         position: absolute;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.6);
-    }
-
-    .map-path {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 2;
-    }
-
-    .map-controls {
-        position: absolute;
-        top: 1.5rem;
+        bottom: 1.5rem;
         left: 1.5rem;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
-        z-index: 10;
+        gap: 0.6rem;
+        z-index: 1000;
     }
-
-    .map-btn {
+    .wp-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
         background: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        font-size: 0.85rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        border-radius: 50px;
+        padding: 0.65rem 1.2rem;
+        font-size: 0.82rem;
+        font-weight: 700;
         color: #1e293b;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
     }
+    .wp-btn:hover {
+        box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+        transform: translateY(-1px);
+    }
+    .wp-btn.active-poi {
+        background: #0b4a99;
+        color: white;
+        box-shadow: 0 6px 24px rgba(11,74,153,0.4);
+    }
+    .wp-btn.active-poi i { color: white !important; }
 
-    .map-btn i { color: #ea580c; }
-
-    .milestone-badge {
+    .pos-chip {
         position: absolute;
-        bottom: 1.5rem;
-        right: 1.5rem;
+        top: 1rem;
+        right: 1rem;
         background: white;
+        border-radius: 0.75rem;
         padding: 0.75rem 1.25rem;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-        z-index: 10;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        z-index: 1000;
+        min-width: 180px;
     }
+    .pos-chip .speed { font-size: 1.6rem; font-weight: 900; color: #0b4a99; line-height: 1; }
+    .pos-chip .label { font-size: 0.62rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    .milestone-icon {
-        background: #eff6ff;
-        color: #0b4a99;
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+    .leaflet-control-attribution { font-size: 0.6rem !important; }
 
     /* Quick Actions */
     .quick-actions-row {
@@ -358,44 +344,43 @@
         <div class="stat-box-row">
             <div class="stat-box">
                 <div class="lbl">DISTANCE LEFT</div>
-                <div class="val">482 KM</div>
+                <div class="val">{{ map_data.remaining_km|floatformat:0|default:"--" }} KM</div>
             </div>
             <div class="stat-box">
                 <div class="lbl">ETA</div>
-                <div class="val eta">08:45 HRS</div>
+                <div class="val eta">{{ map_data.eta_display|default:"--" }}</div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Map View -->
-<div class="map-container shadow-sm">
-    <div class="map-overlay-dark"></div>
-    <div class="map-controls">
-        <button class="map-btn"><i class="bi bi-fuel-pump"></i> Fuel Nearby</button>
-        <button class="map-btn"><i class="bi bi-shop"></i> Food Stops</button>
-        <button class="map-btn"><i class="bi bi-tools"></i> Service Centers</button>
+<div class="map-wrap shadow-sm">
+    <div id="gmap"></div>
+
+    {% if active_trip %}
+    <!-- Current Position chip -->
+    <div class="pos-chip">
+        <div class="label">CURRENT POSITION</div>
+        <div style="font-size:0.78rem;color:#64748b;">Heading {{ map_data.heading|default:"N/A" }}</div>
+        <div class="speed">{{ map_data.speed|default:"0" }} <span style="font-size:0.9rem;font-weight:600;">km/h</span></div>
     </div>
+    {% endif %}
 
-    <!-- Animated SVG Route -->
-    <svg class="map-path" viewBox="0 0 1000 350">
-        <path d="M 100 250 Q 300 100 500 200 T 900 100" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" stroke-dasharray="10, 10" />
-        <circle cx="100" cy="250" r="8" fill="#ef4444" />
-        <circle cx="900" cy="100" r="8" fill="#22c55e" />
-        <!-- Current position indicator -->
-        <circle cx="620" cy="160" r="10" fill="#3b82f6" stroke="white" stroke-width="3">
-            <animate attributeName="r" values="8;12;8" dur="1.5s" repeatCount="indefinite" />
-        </circle>
-    </svg>
-
-    <div class="milestone-badge">
-        <div class="milestone-icon">
-            <i class="bi bi-geo-alt-fill"></i>
-        </div>
-        <div>
-            <div class="fw-bold" style="font-size: 0.85rem;">Next Milestone: Surat Highway</div>
-            <div class="text-muted" style="font-size: 0.7rem;">12 KM • Est. 15 mins</div>
-        </div>
+    <!-- Waypoint FABs -->
+    <div class="waypoint-btns">
+        <button class="wp-btn" onclick="searchNearby('fuel')" id="fuelBtn">
+            <i class="bi bi-fuel-pump" style="color:#f59e0b;"></i> Fuel Stations
+        </button>
+        <button class="wp-btn" onclick="searchNearby('food')" id="foodBtn">
+            <i class="bi bi-cup-hot" style="color:#10b981;"></i> Food Stops
+        </button>
+        <button class="wp-btn" onclick="searchNearby('service')" id="serviceBtn">
+            <i class="bi bi-wrench-adjustable" style="color:#6366f1;"></i> Service Centers
+        </button>
+        <button class="wp-btn" onclick="shareTracking()" id="shareBtn">
+            <i class="bi bi-share" style="color:#0b4a99;"></i> Share Tracking
+        </button>
     </div>
 </div>
 
@@ -433,4 +418,12 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+{% include 'fleet/leaflet_map_scripts.html' %}
+<script>
+// Auto-dismiss toasts
+setTimeout(() => { document.querySelectorAll('.toast').forEach(t => t.classList.remove('show')); }, 4000);
+</script>
 {% endblock %}

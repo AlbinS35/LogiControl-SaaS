@@ -94,6 +94,14 @@ AUTH_USER_MODEL = 'fleet.User'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
 
+# ── Session Security ───────────────────────────────────────────────────
+# Sessions expire when the browser is closed (no "keep me logged in" by default)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# Hard cap: even persistent sessions expire after 12 hours of inactivity
+SESSION_COOKIE_AGE = 43200          # 12 hours in seconds
+# Refresh the expiry on every request so active users aren't kicked out
+SESSION_SAVE_EVERY_REQUEST = True
+
 AUTHENTICATION_BACKENDS = [
     'fleet.backends.RoleBasedBackend',
     'allauth.account.auth_backends.AuthenticationBackend',

@@ -124,10 +124,10 @@ a{text-decoration:none}
       <h2>Welcome Back</h2>
       <p class="sub">Sign in to your dashboard to manage operations.</p>
 
-      {% if form.errors %}
+      {% if error %}
       <div class="error-box">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        Invalid credentials or role mismatch. Please try again.
+        Invalid credentials. Please check your email and password.
       </div>
       {% endif %}
 
@@ -156,7 +156,7 @@ a{text-decoration:none}
         </div>
 
         <div class="check-row">
-          <input type="checkbox" id="keepLogged">
+          <input type="checkbox" id="keepLogged" name="keep_logged_in" value="1">
           <label for="keepLogged">Keep me logged in</label>
         </div>
 

@@ -104,6 +104,7 @@ class VehicleForm(forms.ModelForm):
         model = Vehicle
         fields = [
             'registration_number', 'vehicle_type', 'loading_capacity', 'make', 'model', 'year', 'status',
+            'vehicle_photo',
             'rc_document', 'rc_expiry',
             'insurance_policy', 'insurance_expiry',
             'puc_certificate', 'puc_expiry',
