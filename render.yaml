@@ -33,10 +33,10 @@ services:
         generateValue: true                # Render auto-generates a 64-char random string
 
       # ── TiDB Cloud Serverless connection ─────────────────
-      # Set in Render Dashboard → Environment tab.
-      # Format: mysql://<user>:<password>@<tidb-host>:4000/<dbname>?ssl-mode=REQUIRED
+      # TiDB Cloud: fully managed, MySQL-compatible, autoscaling DB.
+      # Docs: https://docs.pingcap.com/tidbcloud/connect-to-tidb-cluster
       - key: DATABASE_URL
-        sync: false                        # prompt user; never committed to repo
+        value: "mysql://36ZDuFT1ncPa4Yb.root:tKQrs0jxptkGMAh7@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/logistics_db?ssl-mode=REQUIRED"
 
       # ── Optional: TiDB CA cert path (usually not needed) ─
       # TiDB Cloud Serverless works with system CA roots out of the box.
