@@ -86,21 +86,45 @@ TEMPLATES = [
 WSGI_APPLICATION = 'logistics_fleet.wsgi.application'
 
 # ──────────────────────────────────────────────────────────
-#  DATABASE  (Render & TiDB via dj-database-url)
+#  DATABASE
+#  • Production (Render): DATABASE_URL env var → TiDB Serverless (MySQL)
+#  • Local dev:           No DATABASE_URL → MySQL Workbench on localhost
 # ──────────────────────────────────────────────────────────
-DATABASES = {
-    'default': dj_database_url.config(
-        default='mysql://root:TvS@2511@localhost:3306/logistics_db',
-        conn_max_age=600,
-        ssl_require=False  # TiDB Serverless usually requires this, dj-database-url parses ?ssl_mode=VERIFY_IDENTITY automatically
-    )
-}
+_DATABASE_URL = os.environ.get('DATABASE_URL')
 
-# TiDB requires specific SQL mode
-DATABASES['default']['OPTIONS'] = {
-    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-    'charset': 'utf8mb4',
-}
+if _DATABASE_URL:
+    # ── Production / Render ──────────────────────────────────
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=_DATABASE_URL,
+            conn_max_age=600,
+        )
+    }
+    # TiDB speaks MySQL wire-protocol; enforce TLS + strict mode
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS'].update({
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        'charset': 'utf8mb4',
+        'ssl': {'ssl_mode': 'REQUIRED'},   # mysqlclient ≥ 2.2 key name
+    })
+else:
+    # ── Local Development — MySQL Workbench ──────────────────
+    # Direct connection; no SSL needed on localhost.
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'logistics_db',
+            'USER': 'root',
+            'PASSWORD': 'TvS@2511',
+            'HOST': '127.0.0.1',
+            'PORT': '3306',
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
+    }
+
 
 # ──────────────────────────────────────────────────────────
 #  AUTH
@@ -109,13 +133,26 @@ AUTH_USER_MODEL = 'fleet.User'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGIN_URL = 'login'
 
-# ── Session Security ───────────────────────────────────────────────────
-# Sessions expire when the browser is closed (no "keep me logged in" by default)
+# ── Session & CSRF Security ────────────────────────────────────────────
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-# Hard cap: even persistent sessions expire after 12 hours of inactivity
 SESSION_COOKIE_AGE = 43200          # 12 hours in seconds
-# Refresh the expiry on every request so active users aren't kicked out
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Explicitly ensure secure flags are off in development (HTTP) and on in production (HTTPS)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+    'https://127.0.0.1:8000',
+    'https://localhost:8000',
+]
+if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}")
+
+
+
 
 AUTHENTICATION_BACKENDS = [
     'fleet.backends.RoleBasedBackend',
@@ -139,9 +176,8 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': ['profile', 'email'],
         'AUTH_PARAMS': {'access_type': 'online'},
         'APP': {
-            # ⚠ Replace with your real credentials from Google Cloud Console
-            'client_id': 'YOUR_GOOGLE_CLIENT_ID',
-            'secret': 'YOUR_GOOGLE_CLIENT_SECRET',
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
             'key': '',
         },
     }
@@ -160,9 +196,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'albinssuresh1883@gmail.com'
-EMAIL_HOST_PASSWORD = 'qpyf gpyz yqvu evmh' # Use Google App Passwords for security
-DEFAULT_FROM_EMAIL = 'noreply@logicontrol.in'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'albinssuresh1883@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')  # Set via Render env var
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@logicontrol.in')
 
 # ──────────────────────────────────────────────────────────
 #  CRISPY FORMS
@@ -196,9 +232,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ──────────────────────────────────────────────────────────
 #  MISC
 # ──────────────────────────────────────────────────────────
-BASE_URL = 'http://127.0.0.1:8000'   # used in invitation emails
+# In production, set BASE_URL env var to your Render URL, e.g. https://logicontrol.onrender.com
+BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:8000')
 
 # ──────────────────────────────────────────────────────────
 #  GOOGLE MAPS
 # ──────────────────────────────────────────────────────────
-MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY'   # Replace with your key
+MAPS_API_KEY = os.environ.get('MAPS_API_KEY', '')   # Set via Render env var
