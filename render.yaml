@@ -1,13 +1,69 @@
+# ────────────────────────────────────────────────────────────
+#  render.yaml — Declarative Infrastructure Blueprint
+#  LogiControl India SaaS  →  Render + TiDB Cloud Serverless
+# ────────────────────────────────────────────────────────────
+#
+#  TiDB Cloud Serverless: fully managed, cloud-native MySQL-compatible DB
+#  with autoscaling, durable storage, and built-in AI workload support.
+#
+#  DATABASE_URL format (port 4000, SSL required):
+#    mysql://<user>:<password>@gateway01.<region>.prod.aws.tidbcloud.com:4000/<db>?ssl-mode=REQUIRED
+#
+#  Paste your TiDB Cloud connection string into the Render dashboard.
+#  Docs: https://docs.pingcap.com/tidbcloud/connect-to-tidb-cluster
+# ────────────────────────────────────────────────────────────
+
 services:
   - type: web
     name: logicontrol
-    env: python
+    runtime: python
+    region: oregon                         # closest Render region to TiDB us-east-1
+    plan: free                             # upgrade to Starter/Standard as needed
     buildCommand: "./build.sh"
-    startCommand: "gunicorn logistics_fleet.wsgi:application"
+    startCommand: "gunicorn logistics_fleet.wsgi:application --chdir backend --bind 0.0.0.0:$PORT --workers 3 --timeout 120"
+    autoDeploy: true                       # redeploy on every push to main
+
     envVars:
+      # ── Python runtime ───────────────────────────────────
       - key: PYTHON_VERSION
-        value: 3.10.0
-      - key: DATABASE_URL
-        sync: false # TiDB Serverless connection string provided by the user in the Render dashboard
+        value: "3.11.9"
+
+      # ── Django secrets ───────────────────────────────────
       - key: SECRET_KEY
-        generateValue: true
+        generateValue: true                # Render auto-generates a 64-char random string
+
+      # ── TiDB Cloud Serverless connection ─────────────────
+      # Set in Render Dashboard → Environment tab.
+      # Format: mysql://<user>:<password>@<tidb-host>:4000/<dbname>?ssl-mode=REQUIRED
+      - key: DATABASE_URL
+        sync: false                        # prompt user; never committed to repo
+
+      # ── Optional: TiDB CA cert path (usually not needed) ─
+      # TiDB Cloud Serverless works with system CA roots out of the box.
+      # Only set this if you download and pin the TiDB CA cert.
+      - key: TIDB_CA_PATH
+        value: ""
+
+      # ── App identity ─────────────────────────────────────
+      - key: RENDER
+        value: "true"
+
+      # ── Production base URL (used in invitation emails) ──
+      # Update after first deploy with your actual Render URL.
+      - key: BASE_URL
+        value: "https://logicontrol.onrender.com"
+
+      # ── Email credentials ─────────────────────────────────
+      - key: EMAIL_HOST_PASSWORD
+        sync: false                        # Set your Gmail App Password here
+
+      # ── Google OAuth 2.0 ─────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # ── Google Maps API ───────────────────────────────────
+      - key: MAPS_API_KEY
+        sync: false

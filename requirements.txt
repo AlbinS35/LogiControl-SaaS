@@ -2,7 +2,7 @@
 
 # Core
 Django>=5.0,<5.2
-mysqlclient>=2.2.0,<2.3
+mysqlclient>=2.2.0           # MySQL wire-protocol driver for TiDB Cloud Serverless
 
 # Image handling
 Pillow>=10.2.0
@@ -22,6 +22,9 @@ googlemaps>=4.10.0
 # Email (production SMTP)
 # Uncomment when deploying:
 # django-anymail[sendgrid]>=10.0
+
+# PDF Generation (e-Way Bill compliance documents)
+xhtml2pdf>=0.2.11
 
 # Production Hosting
 gunicorn>=21.2.0

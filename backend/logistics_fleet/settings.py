@@ -87,40 +87,64 @@ WSGI_APPLICATION = 'logistics_fleet.wsgi.application'
 
 # ──────────────────────────────────────────────────────────
 #  DATABASE
-#  • Production (Render): DATABASE_URL env var → TiDB Serverless (MySQL)
-#  • Local dev:           No DATABASE_URL → MySQL Workbench on localhost
+#  • Production (Render + TiDB Cloud Serverless)
+#    DATABASE_URL env var format:
+#    mysql://<user>:<password>@<host>:4000/<db>?ssl-mode=REQUIRED
+#
+#  TiDB Cloud is a fully managed, cloud-native MySQL-compatible
+#  database with autoscaling, durable object storage, and
+#  built-in AI workload support (Vector Search, etc.).
+#  Docs: https://docs.pingcap.com/tidbcloud
+#
+#  • Local dev: No DATABASE_URL → falls back to local MySQL
 # ──────────────────────────────────────────────────────────
 _DATABASE_URL = os.environ.get('DATABASE_URL')
 
+# Optional: path to TiDB Cloud CA cert (set via Render env var)
+# Leave blank — TiDB Cloud Serverless works with system CA roots.
+_TIDB_CA_PATH = os.environ.get('TIDB_CA_PATH', '')
+
 if _DATABASE_URL:
-    # ── Production / Render ──────────────────────────────────
+    # ── Production / TiDB Cloud Serverless via Render ────────
     DATABASES = {
         'default': dj_database_url.config(
             default=_DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=600,       # Keep connections alive for 10 min
+            conn_health_checks=True # Auto-discard stale/broken connections
         )
     }
-    # TiDB speaks MySQL wire-protocol; enforce TLS + strict mode
+
+    # TiDB Cloud: MySQL wire-protocol on port 4000, TLS required
+    _tidb_ssl: dict = {'ssl_mode': 'REQUIRED'}
+    if _TIDB_CA_PATH:
+        _tidb_ssl['ca'] = _TIDB_CA_PATH  # Pin to TiDB CA cert if provided
+
     DATABASES['default'].setdefault('OPTIONS', {})
     DATABASES['default']['OPTIONS'].update({
         'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         'charset': 'utf8mb4',
-        'ssl': {'ssl_mode': 'REQUIRED'},   # mysqlclient ≥ 2.2 key name
+        'ssl_mode': 'REQUIRED',     # mysqlclient top-level SSL enforcement
+        'ssl': _tidb_ssl,           # Additional SSL params for mysqlclient
+        'connect_timeout': 10,      # Fail fast on bad credentials
     })
+    # Ensure engine is MySQL (dj_database_url maps mysql:// correctly)
+    DATABASES['default']['ENGINE'] = 'django.db.backends.mysql'
+
 else:
-    # ── Local Development — MySQL Workbench ──────────────────
-    # Direct connection; no SSL needed on localhost.
+    # ── Local Development — MySQL / MariaDB ──────────────────
+    # Direct connection on localhost; no SSL needed.
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
             'NAME': 'logistics_db',
             'USER': 'root',
-            'PASSWORD': 'TvS@2511',
+            'PASSWORD': os.environ.get('LOCAL_DB_PASSWORD', 'TvS@2511'),
             'HOST': '127.0.0.1',
             'PORT': '3306',
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
                 'charset': 'utf8mb4',
+                'connect_timeout': 10,
             },
         }
     }
